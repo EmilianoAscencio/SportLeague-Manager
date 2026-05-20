@@ -1,0 +1,15 @@
+# Service account / credenciales Firebase Admin (NUNCA subir al repo)
+*.json
+!package.json
+!package-lock.json
+
+# Variables de entorno
+.env
+.env.*
+
+# Dependencias
+node_modules/
+
+# Sistemas operativos
+.DS_Store
+Thumbs.db

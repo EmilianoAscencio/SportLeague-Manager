@@ -1,5 +1,5 @@
 import { auth, db } from "./firebase.js";
-import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
 import { collection, getDocs, addDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { validateRequired, validateMinLength, validateShirtNumber } from "./validators.js";
 import { showAlert, showEmptyState } from "./ui.js";
@@ -9,15 +9,13 @@ let allTeams   = [];
 
 const modal = new bootstrap.Modal(document.getElementById("modal-player"));
 
-// Protección de ruta
-onAuthStateChanged(auth, (user) => {
-  if (!user) return window.location.href = "login.html";
+preventBackAccess();
+requireAuth().then((user) => {
+  showUserInNavbar(user);
   init();
 });
 
-document.getElementById("btn-logout").addEventListener("click", () => {
-  signOut(auth).then(() => window.location.href = "login.html");
-});
+document.getElementById("btn-logout").addEventListener("click", logout);
 
 async function init() {
   await loadTeams();

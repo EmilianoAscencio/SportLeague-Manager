@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jugadores | SportLeague Manager</title>
+  <title>Torneos | SportLeague Manager</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="assets/css/styles.css" />
@@ -22,8 +22,8 @@
         <ul class="navbar-nav me-auto">
           <li class="nav-item"><a class="nav-link" href="dashboard.html">Dashboard</a></li>
           <li class="nav-item"><a class="nav-link" href="teams.html">Equipos</a></li>
-          <li class="nav-item"><a class="nav-link active" href="players.html">Jugadores</a></li>
-          <li class="nav-item"><a class="nav-link" href="tournaments.html">Torneos</a></li>
+          <li class="nav-item"><a class="nav-link" href="players.html">Jugadores</a></li>
+          <li class="nav-item"><a class="nav-link active" href="tournaments.html">Torneos</a></li>
           <li class="nav-item"><a class="nav-link" href="matches.html">Partidos</a></li>
         </ul>
         <span class="text-light small me-3" id="navbar-user"></span>
@@ -37,23 +37,20 @@
   <main class="main-content">
     <div class="container-fluid py-4">
 
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold mb-0">Jugadores</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-player">
-          <i class="bi bi-plus-lg me-1"></i>Nuevo jugador
+      <div class="d-flex justify-content-between align-items-center mb-4 page-header">
+        <div>
+          <h2 class="fw-bold mb-0">Torneos</h2>
+          <span class="subtitle">Gestión de torneos registrados en el sistema</span>
+        </div>
+        <button class="btn btn-primary" id="btn-new">
+          <i class="bi bi-plus-lg me-1"></i>Nuevo torneo
         </button>
       </div>
 
       <div id="alert-container" class="mb-3"></div>
 
-      <!-- Filtro -->
-      <div class="mb-3 col-12 col-md-4">
-        <select class="form-select" id="filter-team">
-          <option value="">Todos los equipos</option>
-        </select>
-      </div>
+      <div class="row g-3 mb-4" id="metrics-row"></div>
 
-      <!-- Tabla -->
       <div class="card border-0 shadow-sm">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -61,69 +58,71 @@
               <tr>
                 <th>#</th>
                 <th>Nombre</th>
-                <th>Matrícula</th>
-                <th>Posición</th>
-                <th>Camiseta</th>
-                <th>Equipo</th>
+                <th>Deporte</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Estado</th>
+                <th>Acciones</th>
               </tr>
             </thead>
-            <tbody id="players-tbody"></tbody>
+            <tbody id="tournaments-tbody"></tbody>
           </table>
         </div>
-        <div id="players-empty" class="p-4"></div>
+        <div id="tournaments-empty" class="p-4"></div>
       </div>
 
     </div>
   </main>
 
   <!-- Modal -->
-  <div class="modal fade" id="modal-player" tabindex="-1">
+  <div class="modal fade" id="modal-tournament" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Nuevo jugador</h5>
+          <h5 class="modal-title">Nuevo torneo</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <form id="player-form" novalidate>
+          <form id="tournament-form" novalidate>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">Equipo <span class="text-danger">*</span></label>
-              <select class="form-select" id="teamId" required>
-                <option value="">Selecciona un equipo</option>
+              <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="t-name" required />
+              <div class="invalid-feedback">Ingresa el nombre del torneo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Deporte <span class="text-danger">*</span></label>
+              <select class="form-select" id="t-sport" required>
+                <option value="">Selecciona</option>
+                <option>Fútbol</option>
+                <option>Baloncesto</option>
+                <option>Voleibol</option>
+                <option>Béisbol</option>
+                <option>Tenis</option>
+                <option>Atletismo</option>
+                <option>Natación</option>
+                <option>Otro</option>
               </select>
-              <div class="invalid-feedback">Selecciona un equipo.</div>
+              <div class="invalid-feedback">Selecciona un deporte.</div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Fecha inicio <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="t-start" required />
+                <div class="invalid-feedback">Ingresa la fecha de inicio.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Fecha fin <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="t-end" required />
+                <div class="invalid-feedback" id="t-end-feedback">Ingresa la fecha de fin.</div>
+              </div>
             </div>
 
             <div class="mb-3">
-              <label class="form-label fw-semibold">Nombre completo <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="fullName" required />
-              <div class="invalid-feedback">Ingresa el nombre completo.</div>
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label fw-semibold">Matrícula <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="studentNumber" required />
-              <div class="invalid-feedback">Ingresa la matrícula.</div>
-            </div>
-
-            <div class="row g-3">
-              <div class="col-6">
-                <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
-                <select class="form-select" id="position" required>
-                  <option value="">Selecciona</option>
-                  <option>Portero</option>
-                  <option>Defensa</option>
-                  <option>Mediocampista</option>
-                  <option>Delantero</option>
-                </select>
-                <div class="invalid-feedback">Selecciona una posición.</div>
-              </div>
-              <div class="col-6">
-                <label class="form-label fw-semibold">Número de camiseta <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="shirtNumber" min="1" max="99" required />
-                <div class="invalid-feedback">Número entre 1 y 99.</div>
-              </div>
+              <label class="form-label fw-semibold">Descripción</label>
+              <textarea class="form-control" id="t-description" rows="2" placeholder="Opcional"></textarea>
             </div>
 
           </form>
@@ -137,6 +136,6 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script type="module" src="assets/js/players.js"></script>
+  <script type="module" src="assets/js/tournaments.js"></script>
 </body>
 </html>
