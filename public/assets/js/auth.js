@@ -17,8 +17,7 @@ export function showUserInNavbar(user) {
   if (el) el.textContent = user.displayName || user.email;
 }
 
-// Muestra loader de página y resuelve con el usuario si está autenticado.
-// Redirige a login.html si no hay sesión activa.
+/* Redirige a login.html si no hay sesión activa.
 export function requireAuth() {
   return new Promise((resolve) => {
     const loader = document.createElement("div");
@@ -35,4 +34,10 @@ export function requireAuth() {
       resolve(user);
     });
   });
+}
+*/
+
+// Modo temporal sin login
+export function requireAuth() {
+  return Promise.resolve(true);
 }
