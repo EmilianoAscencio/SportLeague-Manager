@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SportLeague Manager | Equipos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="dashboard.html">
+        <i class="bi bi-trophy-fill me-2"></i>SportLeague Manager
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="dashboard.html"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link active" href="teams.html"><i class="bi bi-shield-fill me-1"></i>Equipos</a></li>
+          <li class="nav-item"><a class="nav-link" href="players.html"><i class="bi bi-person-fill me-1"></i>Jugadores</a></li>
+          <li class="nav-item"><a class="nav-link" href="tournaments.html"><i class="bi bi-trophy me-1"></i>Torneos</a></li>
+          <li class="nav-item"><a class="nav-link" href="matches.html"><i class="bi bi-calendar3 me-1"></i>Partidos</a></li>
+        </ul>
+        <span class="me-3 small" id="navbar-user"></span>
+        <button class="btn btn-outline-light btn-sm" id="btn-logout">
+          <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="container-fluid px-3 px-md-4 py-4">
+
+      <div id="alert-container" class="mb-3"></div>
+
+      <!-- Header -->
+      <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between mb-4 gap-2">
+        <div>
+          <h2 class="fw-bold mb-0"><i class="bi bi-shield-fill me-2 text-primary"></i>Equipos</h2>
+          <p class="text-muted small mb-0 mt-1">Gestión de equipos participantes</p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-new-team">
+          <i class="bi bi-plus-circle me-1"></i>Nuevo equipo
+        </button>
+      </div>
+
+      <!-- Card tabla -->
+      <div class="card">
+        <div class="card-body p-0">
+          <div id="table-container">
+            <!-- Spinner inicial -->
+            <div class="text-center py-5" id="table-loader">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando equipos...</span>
+              </div>
+              <p class="text-muted small mt-2 mb-0">Cargando equipos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: Crear equipo (HU-18)
+  ════════════════════════════════════════════════ -->
+  <div class="modal fade" id="modal-create" tabindex="-1" aria-labelledby="modal-create-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-create-label">
+            <i class="bi bi-plus-circle me-2 text-primary"></i>Nuevo equipo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="create-name">Nombre del equipo <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="create-name" placeholder="Ej. Águilas FC" maxlength="80" />
+            <div class="invalid-feedback" id="err-create-name"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="create-coach">Entrenador <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="create-coach" placeholder="Nombre completo" maxlength="80" />
+            <div class="invalid-feedback" id="err-create-coach"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="create-category">Categoría <span class="text-danger">*</span></label>
+            <select class="form-select" id="create-category">
+              <option value="">— Selecciona —</option>
+              <option value="Varonil">Varonil</option>
+              <option value="Femenil">Femenil</option>
+              <option value="Mixto">Mixto</option>
+              <option value="Sub-18">Sub-18</option>
+              <option value="Sub-21">Sub-21</option>
+            </select>
+            <div class="invalid-feedback" id="err-create-category"></div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label" for="create-logo">URL del logo <span class="text-muted small">(opcional)</span></label>
+            <input type="url" class="form-control" id="create-logo" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-create-save">
+            <i class="bi bi-floppy me-1"></i>Guardar equipo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: Ver detalle (HU-19)
+  ════════════════════════════════════════════════ -->
+  <div class="modal fade" id="modal-detail" tabindex="-1" aria-labelledby="modal-detail-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-detail-label">
+            <i class="bi bi-info-circle me-2 text-primary"></i>Detalle del equipo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Info del equipo -->
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <img id="detail-logo" src="" alt="Logo" width="64" height="64"
+              class="rounded-circle border" style="object-fit:cover;display:none;border-color:var(--border)!important;" />
+            <div id="detail-logo-placeholder"
+              class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width:64px;height:64px;background:rgba(124,58,237,.15);border:2px solid var(--border);">
+              <i class="bi bi-shield-fill text-primary fs-3"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0" id="detail-name">—</h5>
+              <span class="badge badge-upcoming mt-1" id="detail-category"></span>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-4">
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Entrenador</div>
+                <div class="fw-semibold" id="detail-coach">—</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Estado</div>
+                <div id="detail-status">—</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Fecha de registro</div>
+                <div class="fw-semibold" id="detail-created">—</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Última actualización</div>
+                <div class="fw-semibold" id="detail-updated">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Jugadores del equipo -->
+          <h6 class="fw-semibold mb-2"><i class="bi bi-person-fill me-2 text-primary"></i>Jugadores del equipo</h6>
+          <div id="detail-players-container">
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════
+       MODAL: Editar equipo (HU-20)
+  ════════════════════════════════════════════════ -->
+  <div class="modal fade" id="modal-edit" tabindex="-1" aria-labelledby="modal-edit-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-edit-label">
+            <i class="bi bi-pencil-fill me-2 text-warning"></i>Editar equipo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-id" />
+          <div class="mb-3">
+            <label class="form-label" for="edit-name">Nombre del equipo <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit-name" maxlength="80" />
+            <div class="invalid-feedback" id="err-edit-name"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="edit-coach">Entrenador <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit-coach" maxlength="80" />
+            <div class="invalid-feedback" id="err-edit-coach"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="edit-category">Categoría <span class="text-danger">*</span></label>
+            <select class="form-select" id="edit-category">
+              <option value="">— Selecciona —</option>
+              <option value="Varonil">Varonil</option>
+              <option value="Femenil">Femenil</option>
+              <option value="Mixto">Mixto</option>
+              <option value="Sub-18">Sub-18</option>
+              <option value="Sub-21">Sub-21</option>
+            </select>
+            <div class="invalid-feedback" id="err-edit-category"></div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label" for="edit-logo">URL del logo <span class="text-muted small">(opcional)</span></label>
+            <input type="url" class="form-control" id="edit-logo" placeholder="https://..." />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm text-dark" id="btn-edit-save">
+            <i class="bi bi-floppy me-1"></i>Guardar cambios
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="assets/js/teams.js"></script>
+</body>
+</html>
