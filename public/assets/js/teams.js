@@ -4,6 +4,9 @@
  * HU-18: Registrar nuevo equipo
  * HU-19: Ver detalle y jugadores del equipo
  * HU-20: Editar equipo existente
+ * HU-21: Desactivar equipo (Borrado lógico)
+ * HU-22: Eliminar equipo permanentemente
+ * HU-23: Buscar y filtrar equipos
  */
 
 import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
@@ -13,8 +16,9 @@ import {
   getDocumentById,
   updateDocument,
   checkDuplicate,
+  toggleActive
 } from "./firestore.js";
-import { showAlert, showLoader, hideLoader, showEmptyState } from "./ui.js";
+import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
 
 // ─── Estado local ────────────────────────────────────────────────
@@ -71,7 +75,18 @@ function renderTable(teams) {
     return;
   }
 
-  const rows = teams.map((t) => `
+  const rows = teams.map((t) => {
+
+    const isActive = t.active !== false;
+    
+    const toggleIcon = isActive ? 'bi-toggle-on' : 'bi-toggle-off';
+    const toggleColor = isActive ? 'btn-outline-secondary' : 'btn-outline-success';
+    const toggleTitle = isActive ? 'Desactivar equipo' : 'Activar equipo';
+    const badgeHtml = isActive 
+      ? '<span class="badge badge-active">Activo</span>' 
+      : '<span class="badge badge-danger">Inactivo</span>';
+
+    return `
     <tr>
       <td>
         <div class="d-flex align-items-center gap-2">
@@ -83,7 +98,7 @@ function renderTable(teams) {
       </td>
       <td class="text-muted">${escHtml(t.coach)}</td>
       <td><span class="badge badge-upcoming">${escHtml(t.category)}</span></td>
-      <td><span class="badge badge-active">Activo</span></td>
+      <td>${badgeHtml}</td>
       <td>
         <div class="d-flex gap-1 flex-wrap">
           <button class="btn btn-outline-primary btn-sm" data-action="detail" data-id="${t.id}" title="Ver detalle">
@@ -92,9 +107,13 @@ function renderTable(teams) {
           <button class="btn btn-outline-warning btn-sm" data-action="edit" data-id="${t.id}" title="Editar">
             <i class="bi bi-pencil"></i>
           </button>
+          <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
+            <i class="bi ${toggleIcon}"></i>
+          </button>
         </div>
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   container.innerHTML = `
     <div class="table-wrapper">
@@ -118,6 +137,7 @@ function renderTable(teams) {
       const { action, id } = btn.dataset;
       if (action === "detail") openDetail(id);
       if (action === "edit")   openEdit(id);
+      if (action === "toggle") toggleTeamStatus(id, state === "true");
     });
   });
 }
@@ -338,6 +358,25 @@ async function saveEditTeam() {
   } else {
     showAlert("Error al actualizar: " + result.message, "danger");
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HU-21 — Desactivar / Activar equipo (Borrado lógico)
+// ═══════════════════════════════════════════════════════════════
+function toggleTeamStatus(id, currentState) {
+  const accion = currentState ? "desactivar" : "activar";
+  
+  showConfirmModal(`¿Estás seguro de que deseas ${accion} este equipo?`, async () => {
+    
+    const result = await toggleActive("teams", id, currentState);
+    
+    if (result.success) {
+      showAlert(`Equipo ${accion}do correctamente.`, "success");
+      loadTeams(); 
+    } else {
+      showAlert(`Error al ${accion} el equipo: ` + result.message, "danger");
+    }
+  });
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
