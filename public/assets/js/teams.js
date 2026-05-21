@@ -1,14 +1,3 @@
-/**
- * teams.js — Módulo de Equipos
- * HU-17: Listar equipos activos
- * HU-18: Registrar nuevo equipo
- * HU-19: Ver detalle y jugadores del equipo
- * HU-20: Editar equipo existente
- * HU-21: Desactivar equipo (Borrado lógico)
- * HU-22: Eliminar equipo permanentemente
- * HU-23: Buscar y filtrar equipos
- */
-
 import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
 import {
   createDocument,
@@ -22,15 +11,12 @@ import {
 import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
 
-// ─── Estado local ────────────────────────────────────────────────
-let allTeams = [];  // caché de todos los equipos cargados
+let allTeams = [];
 
-// ─── Bootstrap modal instances ───────────────────────────────────
 const modalCreate = new bootstrap.Modal(document.getElementById("modal-create"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail"));
 const modalEdit   = new bootstrap.Modal(document.getElementById("modal-edit"));
 
-// ─── Init ────────────────────────────────────────────────────────
 preventBackAccess();
 
 requireAuth().then((user) => {
@@ -39,10 +25,6 @@ requireAuth().then((user) => {
   loadTeams();
   bindEvents();
 });
-
-// ═══════════════════════════════════════════════════════════════
-// HU-17 — Listar equipos activos
-// ═══════════════════════════════════════════════════════════════
 
 async function loadTeams() {
   const container = document.getElementById("table-container");
@@ -141,7 +123,6 @@ function renderTable(teams) {
       </table>
     </div>`;
 
-  // Delegación de eventos en la tabla
   container.querySelectorAll("[data-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const { action, id, state } = btn.dataset;
@@ -153,10 +134,6 @@ function renderTable(teams) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HU-18 — Registrar nuevo equipo
-// ═══════════════════════════════════════════════════════════════
-
 function bindEvents() {
   document.getElementById("btn-new-team").addEventListener("click", () => {
     clearCreateForm();
@@ -166,7 +143,6 @@ function bindEvents() {
   document.getElementById("btn-create-save").addEventListener("click", saveNewTeam);
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
 
-  // Eventos de los filtros (HU-23)
   document.getElementById("search-team").addEventListener("input", applyFilters);
   document.getElementById("filter-category").addEventListener("change", applyFilters);
   document.getElementById("filter-status").addEventListener("change", applyFilters);
@@ -178,10 +154,8 @@ async function saveNewTeam() {
   const category = document.getElementById("create-category").value;
   const logo     = document.getElementById("create-logo").value.trim();
 
-  // Limpiar errores previos
   clearFieldErrors(["create-name", "create-coach", "create-category"]);
 
-  // Validaciones
   let hasError = false;
 
   const nameCheck = validateMinLength(name, 3);
@@ -224,10 +198,6 @@ async function saveNewTeam() {
     showAlert("Error al guardar: " + result.message, "danger");
   }
 }
-
-// ═══════════════════════════════════════════════════════════════
-// HU-19 — Ver detalle del equipo
-// ═══════════════════════════════════════════════════════════════
 
 async function openDetail(id) {
   // Limpiar campos mientras carga
@@ -302,10 +272,6 @@ async function openDetail(id) {
     </div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HU-20 — Editar equipo
-// ═══════════════════════════════════════════════════════════════
-
 async function openEdit(id) {
   clearEditErrors();
 
@@ -376,9 +342,6 @@ async function saveEditTeam() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HU-21 — Desactivar / Activar equipo (Borrado lógico)
-// ═══════════════════════════════════════════════════════════════
 function toggleTeamStatus(id, currentState) {
   const accion = currentState ? "desactivar" : "activar";
   
@@ -395,9 +358,6 @@ function toggleTeamStatus(id, currentState) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HU-22 — Eliminar equipo permanentemente (Borrado físico)
-// ═══════════════════════════════════════════════════════════════
 function deleteTeam(id) {
   showConfirmModal(`ADVERTENCIA: Esta acción es irreversible. ¿Deseas eliminar este equipo de la base de datos?`, async () => {
     
@@ -412,9 +372,6 @@ function deleteTeam(id) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-// HU-23 — Buscar y filtrar equipos
-// ═══════════════════════════════════════════════════════════════
 function applyFilters() {
   const searchTerm = document.getElementById("search-team").value.toLowerCase();
   const category   = document.getElementById("filter-category").value;
@@ -434,8 +391,6 @@ function applyFilters() {
 
   renderTable(filteredTeams);
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────
 
 function setFieldError(fieldId, message) {
   const el = document.getElementById(fieldId);
