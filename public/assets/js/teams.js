@@ -63,16 +63,22 @@ async function loadTeams() {
     return;
   }
 
-  // Sólo equipos activos
-  allTeams = result.data.filter((t) => t.active !== false);
-  renderTable(allTeams);
+  allTeams = result.data;
+  applyFilters();
 }
 
 function renderTable(teams) {
   const container = document.getElementById("table-container");
 
   if (teams.length === 0) {
-    showEmptyState(container, "No hay equipos registrados. ¡Crea el primero!");
+    
+    if (allTeams.length === 0) {
+      showEmptyState(container, "No hay equipos registrados. ¡Crea el primero!");
+    } 
+    else {
+      showEmptyState(container, "No se encontraron equipos con ese criterio.");
+    }
+    
     return;
   }
 
@@ -159,6 +165,11 @@ function bindEvents() {
 
   document.getElementById("btn-create-save").addEventListener("click", saveNewTeam);
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
+  
+  // Eventos de los filtros (HU-23)
+  document.getElementById("search-team").addEventListener("input", applyFilters);
+  document.getElementById("filter-category").addEventListener("change", applyFilters);
+  document.getElementById("filter-status").addEventListener("change", applyFilters);
 }
 
 async function saveNewTeam() {
@@ -399,6 +410,29 @@ function deleteTeam(id) {
       showAlert("Error al eliminar el equipo: " + result.message, "danger");
     }
   });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HU-23 — Buscar y filtrar equipos
+// ═══════════════════════════════════════════════════════════════
+function applyFilters() {
+  const searchTerm = document.getElementById("search-team").value.toLowerCase();
+  const category   = document.getElementById("filter-category").value;
+  const status     = document.getElementById("filter-status").value;
+
+  const filteredTeams = allTeams.filter((t) => {
+    const matchName = t.name.toLowerCase().includes(searchTerm);
+    
+    const matchCategory = category === "" || t.category === category;
+    
+    let matchStatus = true;
+    if (status === "active")   matchStatus = t.active !== false;
+    if (status === "inactive") matchStatus = t.active === false;
+
+    return matchName && matchCategory && matchStatus;
+  });
+
+  renderTable(filteredTeams);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────
