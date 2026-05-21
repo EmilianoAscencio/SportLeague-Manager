@@ -16,7 +16,8 @@ import {
   getDocumentById,
   updateDocument,
   checkDuplicate,
-  toggleActive
+  toggleActive,
+  deleteDocument
 } from "./firestore.js";
 import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
@@ -110,6 +111,9 @@ function renderTable(teams) {
           <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
             <i class="bi ${toggleIcon}"></i>
           </button>
+          <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${t.id}" title="Eliminar permanentemente">
+            <i class="bi bi-trash"></i>
+          </button>
         </div>
       </td>
     </tr>`;
@@ -138,6 +142,7 @@ function renderTable(teams) {
       if (action === "detail") openDetail(id);
       if (action === "edit")   openEdit(id);
       if (action === "toggle") toggleTeamStatus(id, state === "true");
+      if (action === "delete") deleteTeam(id);
     });
   });
 }
@@ -375,6 +380,23 @@ function toggleTeamStatus(id, currentState) {
       loadTeams(); 
     } else {
       showAlert(`Error al ${accion} el equipo: ` + result.message, "danger");
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HU-22 — Eliminar equipo permanentemente (Borrado físico)
+// ═══════════════════════════════════════════════════════════════
+function deleteTeam(id) {
+  showConfirmModal(`ADVERTENCIA: Esta acción es irreversible. ¿Deseas eliminar este equipo de la base de datos?`, async () => {
+    
+    const result = await deleteDocument("teams", id);
+    
+    if (result.success) {
+      showAlert("Equipo eliminado permanentemente.", "success");
+      loadTeams(); 
+    } else {
+      showAlert("Error al eliminar el equipo: " + result.message, "danger");
     }
   });
 }
