@@ -144,7 +144,7 @@ function renderTable(teams) {
   // Delegación de eventos en la tabla
   container.querySelectorAll("[data-action]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const { action, id } = btn.dataset;
+      const { action, id, state } = btn.dataset;
       if (action === "detail") openDetail(id);
       if (action === "edit")   openEdit(id);
       if (action === "toggle") toggleTeamStatus(id, state === "true");
@@ -165,7 +165,7 @@ function bindEvents() {
 
   document.getElementById("btn-create-save").addEventListener("click", saveNewTeam);
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
-  
+
   // Eventos de los filtros (HU-23)
   document.getElementById("search-team").addEventListener("input", applyFilters);
   document.getElementById("filter-category").addEventListener("change", applyFilters);
