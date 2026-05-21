@@ -1,4 +1,3 @@
-// Muestra una alerta Bootstrap y la cierra automáticamente a los 4 segundos
 export function showAlert(message, type = "success") {
   const container = document.getElementById("alert-container");
   if (!container) return;
@@ -78,7 +77,6 @@ export function showConfirmModal(message, onConfirm) {
   modal.addEventListener("hidden.bs.modal", () => modal.remove());
 }
 
-// Genera el HTML de una fila <tr> a partir de un array de columnas
 export function renderTableRow(columns = []) {
   const cells = columns.map((col) => `<td>${col}</td>`).join("");
   return `<tr>${cells}</tr>`;

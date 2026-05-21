@@ -192,9 +192,6 @@ body {
 .metric-label { font-size:.73rem; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:4px; }
 .metric-icon  { font-size:1.6rem; opacity:.15; }
 
-/* ── Responsive breakpoints (HU-16) ───────────────────────────── */
-
-/* Móvil ≤ 375px */
 @media (max-width:375px) {
   .main-content  { padding-top:56px; }
   .metric-value  { font-size:1.4rem; }
@@ -203,7 +200,6 @@ body {
   h2.fw-bold     { font-size:1.3rem; }
 }
 
-/* Móvil general ≤ 576px */
 @media (max-width:576px) {
   .main-content           { padding-top:58px; }
   .metric-card            { padding:14px 16px; }
@@ -213,7 +209,6 @@ body {
   .card-body              { padding:1rem; }
 }
 
-/* Tablet ≤ 768px */
 @media (max-width:768px) {
   .main-content           { padding-top:60px; }
   .metric-value           { font-size:1.75rem; }
@@ -221,12 +216,10 @@ body {
   .btn-sm                 { font-size:.78rem; }
 }
 
-/* Desktop ≥ 992px */
 @media (min-width:992px) {
   .main-content           { padding-top:70px; }
   .metric-card            { padding:20px 24px; }
   .metric-value           { font-size:2.2rem; }
 }
 
-/* Tabla siempre scrollable en horizontal en móvil */
 .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
