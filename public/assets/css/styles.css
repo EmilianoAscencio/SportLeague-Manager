@@ -26,6 +26,67 @@ body {
   color: var(--text);
 }
 
+/* Auth */
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.auth-panel {
+  width: min(100%, 430px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.auth-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(124, 58, 237, .18);
+  color: #c4b5fd;
+  border: 1px solid rgba(124, 58, 237, .3);
+}
+
+.auth-brand h1 {
+  font-size: 1.35rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.auth-brand p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+.auth-switch {
+  margin: 18px 0 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: .9rem;
+}
+
+.auth-switch a {
+  color: #a78bfa;
+  text-decoration: none;
+  font-weight: 600;
+}
+
 /* Navbar */
 .navbar.bg-primary {
   background: rgba(13,13,20,.92) !important;
@@ -169,4 +230,3 @@ body {
 
 /* Tabla siempre scrollable en horizontal en móvil */
 .table-wrapper { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-
