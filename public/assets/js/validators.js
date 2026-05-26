@@ -24,10 +24,15 @@ export function validatePositiveNumber(value) {
   return { valid, message: valid ? "" : "Debe ser un número mayor a cero." };
 }
 
-// Valida que la fecha tenga formato válido y no sea una fecha inválida
 export function validateDate(date) {
-  const valid = !isNaN(Date.parse(date));
-  return { valid, message: valid ? "" : "Ingresa una fecha válida." };
+  if (!date || isNaN(Date.parse(date))) {
+    return { valid: false, message: "Ingresa una fecha válida." };
+  }
+  const year = new Date(date).getFullYear();
+  if (year < 2000 || year > 2100) {
+    return { valid: false, message: "Ingresa una fecha válida." };
+  }
+  return { valid: true, message: "" };
 }
 
 // Valida número de camiseta entre 1 y 99

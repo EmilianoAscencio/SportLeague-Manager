@@ -1,0 +1,363 @@
+import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { createDocument, getDocuments } from "./firestore.js";
+import { validateRequired, validateDate } from "./validators.js";
+import { showAlert, showEmptyState } from "./ui.js";
+
+// Estado global
+let allMatches     = [];
+let allTournaments = [];
+let allTeams       = [];
+
+const modal = new bootstrap.Modal(document.getElementById("modal-match"));
+
+// Labels de estado 
+const STATUS_LABELS = {
+  scheduled: { label: "Programado", cls: "badge-upcoming" },
+  played:    { label: "Jugado",     cls: "badge-active"   },
+  cancelled: { label: "Cancelado",  cls: "badge-danger"   },
+};
+
+// Init 
+preventBackAccess();
+requireAuth().then((user) => {
+  showUserInNavbar(user);
+  document.getElementById("btn-logout").addEventListener("click", logout);
+  init();
+});
+
+async function init() {
+  await loadAll();
+  bindFilterEvents();
+}
+
+// Carga inicial (torneos + equipos + partidos en paralelo) 
+async function loadAll() {
+  showLoader();
+
+  const [tRes, eqRes, mRes] = await Promise.all([
+    getDocuments("tournaments"),
+    getDocuments("teams"),
+    getDocuments("matches"),
+  ]);
+
+  if (!tRes.success || !eqRes.success || !mRes.success) {
+    showAlert("Error al cargar los datos.", "danger");
+    hideLoader();
+    return;
+  }
+
+  allTournaments = tRes.data;
+  allTeams       = eqRes.data.filter((t) => t.active !== false);
+  allMatches     = mRes.data.sort((a, b) =>
+    (a.matchDate || "").localeCompare(b.matchDate || "")
+  );
+
+  populateSelects();
+  renderMetrics();
+  applyFilters();
+}
+
+function populateSelects() {
+  const filterTournament = document.getElementById("filter-tournament");
+  allTournaments.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value       = t.id;
+    opt.textContent = t.name;
+    filterTournament.appendChild(opt);
+  });
+
+  const mTournament = document.getElementById("m-tournament");
+  allTournaments.forEach((t) => {
+    const opt = document.createElement("option");
+    opt.value       = t.id;
+    opt.textContent = `${t.name} (${t.sport})`;
+    mTournament.appendChild(opt);
+  });
+
+  const teamOptions = allTeams
+    .map((t) => `<option value="${t.id}">${escHtml(t.name)}</option>`)
+    .join("");
+  document.getElementById("m-home").innerHTML +=  teamOptions;
+  document.getElementById("m-away").innerHTML +=  teamOptions;
+}
+
+// Métricas 
+function renderMetrics() {
+  const row = document.getElementById("metrics-row");
+  if (!row) return;
+
+  const total     = allMatches.length;
+  const scheduled = allMatches.filter((m) => m.status === "scheduled").length;
+  const played    = allMatches.filter((m) => m.status === "played").length;
+  const cancelled = allMatches.filter((m) => m.status === "cancelled").length;
+
+  row.innerHTML = `
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div><div class="metric-value">${total}</div><div class="metric-label">Total partidos</div></div>
+          <i class="bi bi-calendar3 metric-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div><div class="metric-value">${scheduled}</div><div class="metric-label">Programados</div></div>
+          <i class="bi bi-clock metric-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card mc-success">
+        <div class="d-flex justify-content-between align-items-start">
+          <div><div class="metric-value">${played}</div><div class="metric-label">Jugados</div></div>
+          <i class="bi bi-check-circle-fill metric-icon"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="metric-card mc-muted">
+        <div class="d-flex justify-content-between align-items-start">
+          <div><div class="metric-value">${cancelled}</div><div class="metric-label">Cancelados</div></div>
+          <i class="bi bi-x-circle metric-icon"></i>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Filtros
+function bindFilterEvents() {
+  document.getElementById("filter-tournament").addEventListener("change", applyFilters);
+  document.getElementById("filter-status").addEventListener("change", applyFilters);
+  document.getElementById("btn-clear-filters").addEventListener("click", () => {
+    document.getElementById("filter-tournament").value = "";
+    document.getElementById("filter-status").value     = "";
+    applyFilters();
+  });
+}
+
+function applyFilters() {
+  const tournamentId = document.getElementById("filter-tournament").value;
+  const status       = document.getElementById("filter-status").value;
+
+  const filtered = allMatches.filter((m) => {
+    const matchTournament = !tournamentId || m.tournamentId === tournamentId;
+    const matchStatus     = !status       || m.status        === status;
+    return matchTournament && matchStatus;
+  });
+
+  renderTable(filtered);
+}
+
+// Render tabla 
+function renderTable(matches) {
+  const container = document.getElementById("table-container");
+
+  if (matches.length === 0) {
+    const message = allMatches.length === 0
+      ? "No hay partidos registrados. ¡Programa el primero!"
+      : "No se encontraron partidos con ese criterio.";
+
+    container.innerHTML = "";
+    showEmptyState(container, message);
+
+    // Botón de acción en empty state cuando no hay ningún partido
+    if (allMatches.length === 0) {
+      const btnWrap = document.createElement("div");
+      btnWrap.className = "mt-2";
+      btnWrap.innerHTML = `<button class="btn btn-primary btn-sm" id="btn-empty-new">
+        <i class="bi bi-plus-circle me-1"></i>Programar primer partido
+      </button>`;
+      container.appendChild(btnWrap);
+      document.getElementById("btn-empty-new")?.addEventListener("click", () => {
+        resetModal();
+        modal.show();
+      });
+    }
+    return;
+  }
+
+  // Resolver nombres desde los mapas en memoria
+  const tournamentMap = {};
+  const teamMap       = {};
+  allTournaments.forEach((t)  => { tournamentMap[t.id] = t.name; });
+  allTeams.forEach((t)        => { teamMap[t.id]       = t.name; });
+
+  const rows = matches.map((m, i) => {
+    const st       = STATUS_LABELS[m.status] ?? STATUS_LABELS.scheduled;
+    const tName    = escHtml(tournamentMap[m.tournamentId] ?? "—");
+    const homeName = escHtml(teamMap[m.homeTeamId] ?? "—");
+    const awayName = escHtml(teamMap[m.awayTeamId] ?? "—");
+    const score    = m.status === "played"
+      ? `<span class="fw-bold">${m.homeScore ?? 0} – ${m.awayScore ?? 0}</span>`
+      : `<span class="text-muted">vs</span>`;
+    const location = escHtml(m.location || "—");
+    const date     = formatDate(m.matchDate);
+    const time     = m.matchTime ?? "—";
+
+    return `<tr>
+      <td class="text-muted small">${i + 1}</td>
+      <td>
+        <span class="badge badge-upcoming">${tName}</span>
+      </td>
+      <td>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-semibold">${homeName}</span>
+          ${score}
+          <span class="fw-semibold">${awayName}</span>
+        </div>
+      </td>
+      <td class="text-nowrap">${date}</td>
+      <td class="text-nowrap">${time}</td>
+      <td class="text-muted small">${location}</td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+    </tr>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Torneo</th>
+            <th>Partido</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Sede</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// Guardar nuevo partido
+document.getElementById("btn-new-match").addEventListener("click", () => {
+  resetModal();
+  modal.show();
+});
+
+document.getElementById("btn-save-match").addEventListener("click", async () => {
+  const tournamentId = document.getElementById("m-tournament").value;
+  const homeTeamId   = document.getElementById("m-home").value;
+  const awayTeamId   = document.getElementById("m-away").value;
+  const matchDate    = document.getElementById("m-date").value;
+  const matchTime    = document.getElementById("m-time").value;
+  const location     = document.getElementById("m-location").value.trim();
+
+  // Limpiar errores previos
+  clearFieldErrors(["m-tournament", "m-home", "m-away", "m-date", "m-time"]);
+
+  let hasError = false;
+
+  // Validaciones de campos requeridos
+  const fieldChecks = [
+    { id: "m-tournament", result: validateRequired(tournamentId) },
+    { id: "m-home",       result: validateRequired(homeTeamId)   },
+    { id: "m-away",       result: validateRequired(awayTeamId)   },
+    { id: "m-date",       result: validateDate(matchDate)        },
+    { id: "m-time",       result: validateRequired(matchTime)    },
+  ];
+
+  fieldChecks.forEach(({ id, result }) => {
+    if (!result.valid) {
+      setFieldError(id, result.message);
+      hasError = true;
+    }
+  });
+
+  // Validar que local ≠ visitante
+  if (homeTeamId && awayTeamId && homeTeamId === awayTeamId) {
+    setFieldError("m-away", "El equipo visitante debe ser diferente al local.");
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  const btn = document.getElementById("btn-save-match");
+  btn.disabled    = true;
+  btn.textContent = "Guardando…";
+
+  const result = await createDocument("matches", {
+    tournamentId,
+    homeTeamId,
+    awayTeamId,
+    matchDate,
+    matchTime,
+    location: location || null,
+    status:     "scheduled",
+    homeScore:  null,
+    awayScore:  null,
+  });
+
+  btn.disabled    = false;
+  btn.innerHTML   = '<i class="bi bi-floppy me-1"></i>Programar partido';
+
+  if (!result.success) {
+    showAlert("Error al guardar el partido: " + result.message, "danger");
+    return;
+  }
+
+  showAlert("Partido programado correctamente.", "success");
+  modal.hide();
+  await loadAll();
+});
+
+// Reset modal 
+document.getElementById("modal-match").addEventListener("hidden.bs.modal", resetModal);
+
+function resetModal() {
+  document.getElementById("match-form").reset();
+  clearFieldErrors(["m-tournament", "m-home", "m-away", "m-date", "m-time"]);
+}
+
+// Loader
+function showLoader() {
+  document.getElementById("table-container").innerHTML = `
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="text-muted small mt-2 mb-0">Cargando partidos...</p>
+    </div>`;
+}
+
+function hideLoader() {
+  const el = document.getElementById("table-loader");
+  if (el) el.remove();
+}
+
+// Utilidades de formulario
+function setFieldError(fieldId, message) {
+  const el = document.getElementById(fieldId);
+  if (el) el.classList.add("is-invalid");
+  const errEl = document.getElementById("err-" + fieldId);
+  if (errEl && message) errEl.textContent = message;
+}
+
+function clearFieldErrors(fieldIds) {
+  fieldIds.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove("is-invalid");
+  });
+}
+
+// Formatters
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function escHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

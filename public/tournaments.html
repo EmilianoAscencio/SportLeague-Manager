@@ -74,12 +74,12 @@
     </div>
   </main>
 
-  <!-- Modal -->
+  <!-- Modal Crear / Editar torneo -->
   <div class="modal fade" id="modal-tournament" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Nuevo torneo</h5>
+          <h5 class="modal-title" id="modal-tournament-title">Nuevo torneo</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -111,13 +111,24 @@
               <div class="col-6">
                 <label class="form-label fw-semibold">Fecha inicio <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" id="t-start" required />
-                <div class="invalid-feedback">Ingresa la fecha de inicio.</div>
+                <div class="invalid-feedback" id="t-start-feedback">Ingresa la fecha de inicio.</div>
               </div>
               <div class="col-6">
                 <label class="form-label fw-semibold">Fecha fin <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" id="t-end" required />
                 <div class="invalid-feedback" id="t-end-feedback">Ingresa la fecha de fin.</div>
               </div>
+            </div>
+
+            <!-- Estado: solo visible al editar -->
+            <div class="mb-3 d-none" id="t-status-wrap">
+              <label class="form-label fw-semibold">Estado</label>
+              <select class="form-select" id="t-status">
+                <option value="upcoming">Próximo</option>
+                <option value="active">En curso</option>
+                <option value="finished">Finalizado</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
             </div>
 
             <div class="mb-3">
@@ -130,6 +141,26 @@
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button class="btn btn-primary" id="btn-save">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle de torneo -->
+  <div class="modal fade" id="modal-detail-tournament" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-info-circle me-2 text-primary"></i>Detalle del torneo
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modal-detail-body">
+          <!-- Cargado dinámicamente -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

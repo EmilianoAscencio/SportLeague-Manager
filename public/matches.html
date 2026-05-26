@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partidos | SportLeague Manager</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="dashboard.html">
+        <i class="bi bi-trophy-fill me-2"></i>SportLeague Manager
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item"><a class="nav-link" href="dashboard.html"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+          <li class="nav-item"><a class="nav-link" href="teams.html"><i class="bi bi-shield-fill me-1"></i>Equipos</a></li>
+          <li class="nav-item"><a class="nav-link" href="players.html"><i class="bi bi-person-fill me-1"></i>Jugadores</a></li>
+          <li class="nav-item"><a class="nav-link" href="tournaments.html"><i class="bi bi-trophy me-1"></i>Torneos</a></li>
+          <li class="nav-item"><a class="nav-link active" href="matches.html"><i class="bi bi-calendar3 me-1"></i>Partidos</a></li>
+        </ul>
+        <span class="text-light small me-3" id="navbar-user"></span>
+        <button class="btn btn-outline-light btn-sm" id="btn-logout">
+          <i class="bi bi-box-arrow-right me-1"></i>Cerrar sesión
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Contenido principal -->
+  <main class="main-content">
+    <div class="container-fluid py-4">
+
+      <!-- Header -->
+      <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between mb-4 gap-2">
+        <div>
+          <h2 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Partidos</h2>
+          <p class="text-muted small mb-0 mt-1">Calendario y resultados de la liga</p>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btn-new-match">
+          <i class="bi bi-plus-circle me-1"></i>Nuevo partido
+        </button>
+      </div>
+
+      <div id="alert-container" class="mb-3"></div>
+
+      <!-- Métricas -->
+      <div class="row g-3 mb-4" id="metrics-row"></div>
+
+      <!-- Filtros -->
+      <div class="row g-2 mb-3">
+        <div class="col-12 col-md-5">
+          <select class="form-select form-select-sm" id="filter-tournament">
+            <option value="">Todos los torneos</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <select class="form-select form-select-sm" id="filter-status">
+            <option value="">Todos los estados</option>
+            <option value="scheduled">Programado</option>
+            <option value="played">Jugado</option>
+            <option value="cancelled">Cancelado</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <button class="btn btn-outline-secondary btn-sm w-100" id="btn-clear-filters">
+            <i class="bi bi-x-circle me-1"></i>Limpiar filtros
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de partidos -->
+      <div class="card border-0 shadow-sm">
+        <div id="table-container">
+          <!-- Cargado dinámicamente -->
+          <div class="text-center py-5" id="table-loader">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando partidos...</span>
+            </div>
+            <p class="text-muted small mt-2 mb-0">Cargando partidos...</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal Nuevo partido -->
+  <div class="modal fade" id="modal-match" tabindex="-1" aria-labelledby="modal-match-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-match-label">
+            <i class="bi bi-calendar-plus me-2 text-primary"></i>Nuevo partido
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="match-form" novalidate>
+
+            <!-- Torneo -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Torneo <span class="text-danger">*</span></label>
+              <select class="form-select" id="m-tournament" required>
+                <option value="">— Selecciona un torneo —</option>
+              </select>
+              <div class="invalid-feedback" id="err-m-tournament">Selecciona un torneo.</div>
+            </div>
+
+            <!-- Equipo local -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Equipo local <span class="text-danger">*</span></label>
+              <select class="form-select" id="m-home" required>
+                <option value="">— Selecciona equipo local —</option>
+              </select>
+              <div class="invalid-feedback" id="err-m-home">Selecciona el equipo local.</div>
+            </div>
+
+            <!-- Equipo visitante -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Equipo visitante <span class="text-danger">*</span></label>
+              <select class="form-select" id="m-away" required>
+                <option value="">— Selecciona equipo visitante —</option>
+              </select>
+              <div class="invalid-feedback" id="err-m-away">Selecciona el equipo visitante.</div>
+            </div>
+
+            <!-- Fecha y hora -->
+            <div class="row g-3 mb-3">
+              <div class="col-7">
+                <label class="form-label fw-semibold">Fecha <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="m-date" required />
+                <div class="invalid-feedback" id="err-m-date">Ingresa la fecha del partido.</div>
+              </div>
+              <div class="col-5">
+                <label class="form-label fw-semibold">Hora <span class="text-danger">*</span></label>
+                <input type="time" class="form-control" id="m-time" required />
+                <div class="invalid-feedback" id="err-m-time">Ingresa la hora del partido.</div>
+              </div>
+            </div>
+
+            <!-- Sede -->
+            <div class="mb-1">
+              <label class="form-label fw-semibold">
+                Sede <span class="text-muted small fw-normal">(opcional)</span>
+              </label>
+              <input type="text" class="form-control" id="m-location"
+                     placeholder="Ej. Cancha principal" maxlength="100" />
+            </div>
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="btn-save-match">
+            <i class="bi bi-floppy me-1"></i>Programar partido
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="assets/js/matches.js"></script>
+</body>
+</html>
