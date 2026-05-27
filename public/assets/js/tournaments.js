@@ -1,6 +1,6 @@
 import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
 import { createDocument, getDocuments, updateDocument, deleteDocument, checkDuplicate } from "./firestore.js";
-import { validateRequired, validateDate } from "./validators.js";
+import { validateRequired, validateDate, validateDateChronology, validateReasonableYear } from "./validators.js";
 import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
 
 let allTournaments = [];
@@ -331,6 +331,9 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     { id: "t-end",   result: validateDate(endDate) },
   ];
 
+  if (checks[2].result.valid) checks[2].result = validateReasonableYear(startDate);
+  if (checks[3].result.valid) checks[3].result = validateReasonableYear(endDate);
+
   let isValid = true;
   checks.forEach(({ id, result }) => {
     document.getElementById(id).classList.toggle("is-invalid", !result.valid);
@@ -342,13 +345,14 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     }
   });
 
-  // Validar que fecha fin > fecha inicio
-  if (isValid && new Date(endDate) <= new Date(startDate)) {
-    const endEl = document.getElementById("t-end");
-    endEl.classList.add("is-invalid");
-    document.getElementById("t-end-feedback").textContent =
-      "La fecha fin debe ser posterior a la fecha inicio.";
-    isValid = false;
+  // Validación de cronología: Fecha Fin debe ser >= Fecha Inicio (HU-35)
+  if (isValid) {
+    const chronologyCheck = validateDateChronology(startDate, endDate);
+    if (!chronologyCheck.valid) {
+      document.getElementById("t-end").classList.add("is-invalid");
+      document.getElementById("t-end-feedback").textContent = chronologyCheck.message;
+      isValid = false;
+    }
   }
 
   if (!isValid) return;
@@ -369,6 +373,23 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     return;
   }
 
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  let finalStatus = status;
+
+  if (!editingId) {
+    if (endDate < todayStr) {
+      finalStatus = "finished"; // El torneo ya terminó en el pasado
+    } else if (startDate <= todayStr && endDate >= todayStr) {
+      finalStatus = "active";   // El torneo empezó hoy o antes, y termina hoy o después
+    } else {
+      finalStatus = "upcoming"; // El torneo empieza en el futuro
+    }
+  }
+
   const data = {
     name,
     nameLower: name.toLowerCase(),
@@ -376,12 +397,12 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     startDate,
     endDate,
     description,
-    status,
+    status: finalStatus,
   };
 
   const result = editingId
     ? await updateDocument("tournaments", editingId, data)
-    : await createDocument("tournaments", { ...data, status: "upcoming" });
+    : await createDocument("tournaments", data);
 
   if (!result.success) {
     showAlert("Error al guardar el torneo.", "danger");

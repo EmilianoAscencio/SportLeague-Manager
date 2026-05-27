@@ -41,3 +41,28 @@ export function validateShirtNumber(value) {
   const valid = Number.isInteger(num) && num >= 1 && num <= 99;
   return { valid, message: valid ? "" : "El número debe ser entero entre 1 y 99." };
 }
+
+// ── Validaciones de Fechas (HU-35) ───────────────────────────────────────────
+
+export function validateDateChronology(startDateStr, endDateStr) {
+  if (!startDateStr || !endDateStr) return { valid: false, message: "Ambas fechas son requeridas." };
+  
+  const isValid = endDateStr >= startDateStr;
+  
+  return {
+    valid: isValid,
+    message: isValid ? "" : "La fecha de fin no puede ser anterior a la de inicio."
+  };
+}
+
+export function validateReasonableYear(dateStr, minYear = 2020, maxYear = 2035) {
+  if (!dateStr) return { valid: false, message: "Fecha requerida." };
+  
+  const year = parseInt(dateStr.split('-')[0], 10);
+  const isValid = year >= minYear && year <= maxYear;
+  
+  return {
+    valid: isValid,
+    message: isValid ? "" : `El año debe ser coherente (entre ${minYear} y ${maxYear}).`
+  };
+}

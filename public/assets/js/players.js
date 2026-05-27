@@ -1,8 +1,8 @@
 import { auth, db } from "./firebase.js";
 import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
-import { collection, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { validateRequired, validateMinLength, validateShirtNumber } from "./validators.js";
-import { showAlert, showEmptyState } from "./ui.js";
+import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
 
 // ── HU-29: Posiciones por deporte ────────────────────────────────────────────
 const SPORT_POSITIONS = {
@@ -28,6 +28,7 @@ let allTeams   = [];
 
 const modal       = new bootstrap.Modal(document.getElementById("modal-player"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail"));
+const modalEdit = new bootstrap.Modal(document.getElementById("modal-edit"));
 
 preventBackAccess();
 requireAuth().then((user) => {
@@ -53,6 +54,7 @@ async function loadTeams() {
   allTeams.forEach((team) => {
     document.getElementById("teamId").innerHTML      += `<option value="${team.id}">${team.name}</option>`;
     document.getElementById("filter-team").innerHTML += `<option value="${team.id}">${team.name}</option>`;
+    document.getElementById("edit-teamId").innerHTML += `<option value="${team.id}">${team.name}</option>`;
   });
 }
 
@@ -62,13 +64,24 @@ async function loadPlayers() {
   renderPlayers(allPlayers);
 }
 
-// ── Filtro por equipo ────────────────────────────────────────────────────────
+// HU:34 ── Filtros y Búsqueda en tiempo real ────────────────────────────────────────
 
-document.getElementById("filter-team").addEventListener("change", (e) => {
-  const teamId   = e.target.value;
-  const filtered = teamId ? allPlayers.filter((p) => p.teamId === teamId) : allPlayers;
+function applyFilters() {
+  const teamId = document.getElementById("filter-team").value;
+  const searchTerm = document.getElementById("search-player").value.toLowerCase().trim();
+
+  const filtered = allPlayers.filter((p) => {
+    const matchesTeam = teamId === "" || p.teamId === teamId;
+    const matchesName = p.fullName.toLowerCase().includes(searchTerm);
+
+    return matchesTeam && matchesName;
+  });
+
   renderPlayers(filtered);
-});
+}
+
+document.getElementById("filter-team").addEventListener("change", applyFilters);
+document.getElementById("search-player").addEventListener("input", applyFilters);
 
 // ── Eventos del formulario ───────────────────────────────────────────────────
 
@@ -96,6 +109,41 @@ function bindFormEvents() {
       document.getElementById("studentNumber").classList.remove("is-invalid");
     }
   });
+
+  // HU-31: Editar jugador 
+  document.getElementById("edit-teamId").addEventListener("change", (e) => {
+    const selectedId = e.target.value;
+    if (!selectedId) {
+      document.getElementById("edit-position").innerHTML = `<option value="">— Selecciona un equipo primero —</option>`;
+      document.getElementById("edit-position").disabled = true;
+      return;
+    }
+    const team = allTeams.find((t) => t.id === selectedId);
+    updateEditPositionOptions(team?.sport ?? null);
+  });
+
+  document.getElementById("edit-participantType").addEventListener("change", (e) => {
+    const isStudent = e.target.value === "Estudiante";
+    const wrapper   = document.getElementById("edit-studentNumber-wrapper");
+    
+    wrapper.style.display = isStudent ? "" : "none";
+    
+    if (!isStudent) {
+      document.getElementById("edit-studentNumber").value = "";
+      document.getElementById("edit-studentNumber").classList.remove("is-invalid");
+    }
+  });
+}
+
+function updateEditPositionOptions(sport) {
+  const posSelect = document.getElementById("edit-position");
+  const positions = sport ? (SPORT_POSITIONS[sport] ?? ALL_POSITIONS) : ALL_POSITIONS;
+
+  posSelect.innerHTML = `<option value="">Selecciona</option>`;
+  positions.forEach((pos) => {
+    posSelect.innerHTML += `<option value="${pos}">${pos}</option>`;
+  });
+  posSelect.disabled = false;
 }
 
 // ── HU-29: Manejo del select de posición ─────────────────────────────────────
@@ -139,6 +187,13 @@ function renderPlayers(players) {
     const teamName  = allTeams.find((t) => t.id === p.teamId)?.name ?? "—";
     const tipo      = p.participantType ?? "—";
     const matricula = p.participantType === "Estudiante" ? (p.studentNumber ?? "—") : "N/A";
+
+    const isActive    = p.active !== false; 
+    const statusIcon  = isActive ? "bi-toggle-on" : "bi-toggle-off";
+    const statusClass = isActive ? "btn-outline-success" : "btn-outline-secondary";
+    const statusTitle = isActive ? "Desactivar" : "Activar";
+    const rowClass = isActive ? "" : "text-muted opacity-75";
+
     return `<tr>
       <td>${i + 1}</td>
       <td>${escHtml(p.fullName)}</td>
@@ -151,12 +206,33 @@ function renderPlayers(players) {
         <button class="btn btn-outline-primary btn-sm btn-detail" data-id="${p.id}" title="Ver ficha">
           <i class="bi bi-eye"></i>
         </button>
+        <button class="btn btn-outline-warning btn-sm btn-edit ms-1" data-id="${p.id}" title="Editar">
+          <i class="bi bi-pencil-fill"></i>
+        </button>
+        <button class="btn ${statusClass} btn-sm btn-toggle ms-1" data-id="${p.id}" title="${statusTitle}">
+          <i class="bi ${statusIcon}"></i>
+        </button>
+        <button class="btn btn-outline-danger btn-sm btn-delete ms-1" data-id="${p.id}" title="Eliminar definitivamente">
+          <i class="bi bi-trash-fill"></i>
+        </button>
       </td>
     </tr>`;
   }).join("");
 
   tbody.querySelectorAll(".btn-detail").forEach((btn) => {
     btn.addEventListener("click", () => openDetail(btn.dataset.id));
+  });
+
+  tbody.querySelectorAll(".btn-edit").forEach((btn) => {
+    btn.addEventListener("click", () => openEdit(btn.dataset.id));
+  });
+  
+  tbody.querySelectorAll(".btn-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => togglePlayerStatus(btn.dataset.id));
+  });
+
+  tbody.querySelectorAll(".btn-delete").forEach((btn) => {
+    btn.addEventListener("click", () => deletePlayer(btn.dataset.id));
   });
 }
 
@@ -253,6 +329,155 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   resetForm();
   await loadPlayers();
 });
+
+// ── HU-31: Abrir modal de edición y cargar datos ─────────────────────────────
+
+function openEdit(id) {
+  const p = allPlayers.find((pl) => pl.id === id);
+  if (!p) return;
+
+  document.querySelectorAll("#edit-player-form .is-invalid").forEach(el => el.classList.remove("is-invalid"));
+
+  document.getElementById("edit-id").value = p.id;
+  document.getElementById("edit-fullName").value = p.fullName;
+  document.getElementById("edit-shirtNumber").value = p.shirtNumber;
+  document.getElementById("edit-participantType").value = p.participantType;
+  const isStudent = p.participantType === "Estudiante";
+  document.getElementById("edit-studentNumber-wrapper").style.display = isStudent ? "" : "none";
+  document.getElementById("edit-studentNumber").value = isStudent ? (p.studentNumber || "") : "";
+  document.getElementById("edit-teamId").value = p.teamId;
+  const team = allTeams.find((t) => t.id === p.teamId);
+  updateEditPositionOptions(team?.sport ?? null);
+  document.getElementById("edit-position").value = p.position;
+
+  modalEdit.show();
+}
+
+// ── HU-31: Guardar cambios de edición ────────────────────────────────────────
+
+document.getElementById("btn-edit-save").addEventListener("click", async () => {
+  const editId          = document.getElementById("edit-id").value;
+  const teamId          = document.getElementById("edit-teamId").value;
+  const fullName        = document.getElementById("edit-fullName").value.trim();
+  const participantType = document.getElementById("edit-participantType").value;
+  const studentNumber   = document.getElementById("edit-studentNumber").value.trim();
+  const position        = document.getElementById("edit-position").value;
+  const shirtNumber     = Number(document.getElementById("edit-shirtNumber").value);
+  const isStudent       = participantType === "Estudiante";
+
+  const checks = [
+    { id: "edit-teamId",          result: validateRequired(teamId) },
+    { id: "edit-fullName",        result: validateMinLength(fullName, 3) },
+    { id: "edit-participantType", result: validateRequired(participantType) },
+    { id: "edit-position",        result: validateRequired(position) },
+    { id: "edit-shirtNumber",     result: validateShirtNumber(shirtNumber) },
+  ];
+
+  if (isStudent) {
+    checks.push({ id: "edit-studentNumber", result: validateRequired(studentNumber) });
+  }
+
+  let isValid = true;
+  checks.forEach(({ id, result }) => {
+    const el = document.getElementById(id);
+    el.classList.toggle("is-invalid", !result.valid);
+    if (!result.valid) isValid = false;
+  });
+
+  if (!isValid) return; 
+
+  const duplicate = allPlayers.find(
+    (p) => p.teamId === teamId && p.shirtNumber === shirtNumber && p.id !== editId
+  );
+  if (duplicate) {
+    showAlert(`El número ${shirtNumber} ya está en uso en este equipo.`, "danger");
+    return;
+  }
+
+  try {
+    const playerRef = doc(db, "players", editId);
+    
+    await updateDoc(playerRef, {
+      teamId,
+      fullName,
+      participantType,
+      studentNumber: isStudent ? studentNumber : null,
+      position,
+      shirtNumber,
+      updatedAt: serverTimestamp(),
+    });
+
+    showAlert("Jugador actualizado correctamente.", "success");
+    modalEdit.hide();
+    await loadPlayers(); 
+    
+  } catch (error) {
+    console.error("Error al actualizar jugador:", error);
+    showAlert("Ocurrió un error al actualizar el jugador.", "danger");
+  }
+});
+
+// ── HU-32: Activar / Desactivar Jugador (Borrado Lógico) ─────────────────────
+
+async function togglePlayerStatus(id) {
+  // 1. Buscamos al jugador
+  const p = allPlayers.find((pl) => pl.id === id);
+  if (!p) return;
+
+  // 2. Determinamos el nuevo estado y los textos
+  const isCurrentlyActive = p.active !== false;
+  const newStatus = !isCurrentlyActive;
+  const actionText = isCurrentlyActive ? "desactivar" : "activar";
+
+  // 3. Definimos el mensaje
+  const mensaje = `¿Estás seguro de que deseas ${actionText} a <strong>${p.fullName}</strong>?`;
+
+  // 4. Llamamos a tu modal pasando SOLO 2 parámetros (mensaje y callback)
+  showConfirmModal(mensaje, async () => {
+    
+    try {
+      const playerRef = doc(db, "players", id);
+      
+      await updateDoc(playerRef, {
+        active: newStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      showAlert(`Jugador ${newStatus ? 'activado' : 'desactivado'} correctamente.`, "success");
+      await loadPlayers(); 
+      
+    } catch (error) {
+      console.error("Error al cambiar estado del jugador:", error);
+      showAlert(`Ocurrió un error al ${actionText} al jugador.`, "danger");
+    }
+    
+  });
+}
+
+// ── HU-33: Eliminar Jugador Definitivamente (Hard Delete) ────────────────────
+
+function deletePlayer(id) {
+  const p = allPlayers.find((pl) => pl.id === id);
+  if (!p) return;
+
+  const mensaje = `¿Estás completamente seguro de que deseas eliminar permanentemente a <strong>${p.fullName}</strong>? <br><br><span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Esta acción no se puede deshacer.</span>`;
+
+  showConfirmModal(mensaje, async () => {
+    try {
+      const playerRef = doc(db, "players", id);
+      
+      await deleteDoc(playerRef);
+
+      showAlert("Jugador eliminado definitivamente del sistema.", "success");
+      
+      await loadPlayers(); 
+      
+    } catch (error) {
+      console.error("Error al eliminar jugador:", error);
+      showAlert("Ocurrió un error al intentar eliminar al jugador.", "danger");
+    }
+  });
+}
 
 // ── Reset del formulario ─────────────────────────────────────────────────────
 

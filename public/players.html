@@ -47,11 +47,18 @@
       <div id="alert-container" class="mb-3"></div>
 
       <!-- Filtro -->
-      <div class="mb-3 col-12 col-md-4">
-        <select class="form-select" id="filter-team">
-          <option value="">Todos los equipos</option>
-        </select>
-      </div>
+      <div class="row mb-3">
+        <div class="col-12 col-md-4 mb-2 mb-md-0">
+          <select class="form-select" id="filter-team">
+            <option value="">Todos los equipos</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-8">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="search-player" placeholder="Buscar jugador por nombre..." autocomplete="off" />
+          </div>
+        </div>
 
       <!-- Tabla -->
       <div class="card border-0 shadow-sm">
@@ -219,6 +226,77 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HU-31: Modal Editar Jugador -->
+  <div class="modal fade" id="modal-edit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-pencil-fill me-2 text-warning"></i>Editar jugador
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-id" />
+          <form id="edit-player-form" novalidate>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Equipo <span class="text-danger">*</span></label>
+              <select class="form-select" id="edit-teamId" required>
+                <option value="">Selecciona un equipo</option>
+              </select>
+              <div class="invalid-feedback" id="err-edit-teamId">Selecciona un equipo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre completo <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit-fullName" required />
+              <div class="invalid-feedback" id="err-edit-fullName">Ingresa el nombre completo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Tipo de participante <span class="text-danger">*</span></label>
+              <select class="form-select" id="edit-participantType" required>
+                <option value="">Selecciona</option>
+                <option value="Estudiante">Estudiante</option>
+                <option value="Externo">Externo</option>
+              </select>
+              <div class="invalid-feedback" id="err-edit-participantType">Selecciona el tipo de participante.</div>
+            </div>
+
+            <div class="mb-3" id="edit-studentNumber-wrapper">
+              <label class="form-label fw-semibold">Matrícula <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit-studentNumber" />
+              <div class="invalid-feedback" id="err-edit-studentNumber">Ingresa la matrícula.</div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
+                <select class="form-select" id="edit-position" required>
+                  <option value="">— Selecciona un equipo primero —</option>
+                </select>
+                <div class="invalid-feedback" id="err-edit-position">Selecciona una posición.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Número de camiseta <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="edit-shirtNumber" min="1" max="99" required />
+                <div class="invalid-feedback" id="err-edit-shirtNumber">Número entre 1 y 99.</div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm text-dark" id="btn-edit-save">
+            <i class="bi bi-floppy me-1"></i>Guardar cambios
+          </button>
         </div>
       </div>
     </div>
