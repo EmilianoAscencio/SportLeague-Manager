@@ -11,6 +11,16 @@ import {
 import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
 
+// ── Categorías disponibles por deporte ──────────────────────────────────────
+const SPORT_CATEGORIES = {
+  "Fútbol":           ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
+  "Baloncesto":       ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
+  "Voleibol":         ["Varonil", "Femenil", "Mixto"],
+  "Béisbol":          ["Varonil", "Sub-18", "Sub-21"],
+  "Softbol":          ["Femenil", "Mixto"],
+  "Fútbol Americano": ["Varonil", "Sub-18", "Sub-21"],
+};
+
 let allTeams = [];
 
 const modalCreate = new bootstrap.Modal(document.getElementById("modal-create"));
@@ -19,12 +29,23 @@ const modalEdit   = new bootstrap.Modal(document.getElementById("modal-edit"));
 
 preventBackAccess();
 
+// Bindear eventos de deporte al nivel raíz, sin esperar auth
+// (los selects ya existen en el DOM cuando el módulo carga)
+document.getElementById("create-sport").addEventListener("change", () => {
+  updateCategoryOptions("create-sport", "create-category");
+});
+document.getElementById("edit-sport").addEventListener("change", () => {
+  updateCategoryOptions("edit-sport", "edit-category");
+});
+
 requireAuth().then((user) => {
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   loadTeams();
   bindEvents();
 });
+
+// ── Carga y renderizado ──────────────────────────────────────────────────────
 
 async function loadTeams() {
   const container = document.getElementById("table-container");
@@ -53,26 +74,21 @@ function renderTable(teams) {
   const container = document.getElementById("table-container");
 
   if (teams.length === 0) {
-    
     if (allTeams.length === 0) {
       showEmptyState(container, "No hay equipos registrados. ¡Crea el primero!");
-    } 
-    else {
+    } else {
       showEmptyState(container, "No se encontraron equipos con ese criterio.");
     }
-    
     return;
   }
 
   const rows = teams.map((t) => {
-
-    const isActive = t.active !== false;
-    
-    const toggleIcon = isActive ? 'bi-toggle-on' : 'bi-toggle-off';
+    const isActive    = t.active !== false;
+    const toggleIcon  = isActive ? 'bi-toggle-on' : 'bi-toggle-off';
     const toggleColor = isActive ? 'btn-outline-secondary' : 'btn-outline-success';
     const toggleTitle = isActive ? 'Desactivar equipo' : 'Activar equipo';
-    const badgeHtml = isActive 
-      ? '<span class="badge badge-active">Activo</span>' 
+    const badgeHtml   = isActive
+      ? '<span class="badge badge-active">Activo</span>'
       : '<span class="badge badge-danger">Inactivo</span>';
 
     return `
@@ -86,6 +102,7 @@ function renderTable(teams) {
         </div>
       </td>
       <td class="text-muted">${escHtml(t.coach)}</td>
+      <td class="text-muted">${escHtml(t.sport ?? "—")}</td>
       <td><span class="badge badge-upcoming">${escHtml(t.category)}</span></td>
       <td>${badgeHtml}</td>
       <td>
@@ -114,6 +131,7 @@ function renderTable(teams) {
           <tr>
             <th>Equipo</th>
             <th>Entrenador</th>
+            <th>Deporte</th>
             <th>Categoría</th>
             <th>Estado</th>
             <th>Acciones</th>
@@ -134,6 +152,8 @@ function renderTable(teams) {
   });
 }
 
+// ── Eventos generales ────────────────────────────────────────────────────────
+
 function bindEvents() {
   document.getElementById("btn-new-team").addEventListener("click", () => {
     clearCreateForm();
@@ -144,17 +164,53 @@ function bindEvents() {
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
 
   document.getElementById("search-team").addEventListener("input", applyFilters);
+  document.getElementById("filter-sport").addEventListener("change", applyFilters);   // HU-27
   document.getElementById("filter-category").addEventListener("change", applyFilters);
   document.getElementById("filter-status").addEventListener("change", applyFilters);
+
+  // Nota: los eventos de deporte ya se bindean al nivel raíz (fuera de requireAuth)
 }
+
+// ── Lógica de deporte / categoría ───────────────────────────────────────────
+
+/**
+ * Repopula el select de categoría según el deporte seleccionado.
+ * @param {string} sportSelectId  - id del select de deporte
+ * @param {string} categorySelectId - id del select de categoría
+ * @param {string} [selectedCategory] - valor a preseleccionar (para edición)
+ */
+function updateCategoryOptions(sportSelectId, categorySelectId, selectedCategory = "") {
+  const sport      = document.getElementById(sportSelectId).value;
+  const catSelect  = document.getElementById(categorySelectId);
+  const categories = SPORT_CATEGORIES[sport] ?? [];
+
+  catSelect.innerHTML = "";
+
+  if (!sport) {
+    catSelect.innerHTML = `<option value="">— Selecciona un deporte primero —</option>`;
+    return;
+  }
+
+  catSelect.innerHTML = `<option value="">— Selecciona —</option>`;
+  categories.forEach((cat) => {
+    const opt       = document.createElement("option");
+    opt.value       = cat;
+    opt.textContent = cat;
+    if (cat === selectedCategory) opt.selected = true;
+    catSelect.appendChild(opt);
+  });
+}
+
+// ── Crear equipo ─────────────────────────────────────────────────────────────
 
 async function saveNewTeam() {
   const name     = document.getElementById("create-name").value.trim();
   const coach    = document.getElementById("create-coach").value.trim();
+  const sport    = document.getElementById("create-sport").value;
   const category = document.getElementById("create-category").value;
   const logo     = document.getElementById("create-logo").value.trim();
 
-  clearFieldErrors(["create-name", "create-coach", "create-category"]);
+  clearFieldErrors(["create-name", "create-coach", "create-sport", "create-category"]);
 
   let hasError = false;
 
@@ -164,6 +220,9 @@ async function saveNewTeam() {
   const coachCheck = validateMinLength(coach, 3);
   if (!coachCheck.valid) { setFieldError("create-coach", coachCheck.message); hasError = true; }
 
+  const sportCheck = validateRequired(sport);
+  if (!sportCheck.valid) { setFieldError("create-sport", "Selecciona un deporte."); hasError = true; }
+
   const catCheck = validateRequired(category);
   if (!catCheck.valid) { setFieldError("create-category", "Selecciona una categoría."); hasError = true; }
 
@@ -172,7 +231,6 @@ async function saveNewTeam() {
   const btn = document.getElementById("btn-create-save");
   showLoader(btn, "Guardando...");
 
-  // Verificar nombre duplicado
   const dupCheck = await checkDuplicate("teams", "name", name);
   if (dupCheck.isDuplicate) {
     setFieldError("create-name", "Ya existe un equipo con ese nombre.");
@@ -183,6 +241,7 @@ async function saveNewTeam() {
   const result = await createDocument("teams", {
     name,
     coach,
+    sport,
     category,
     logoUrl: logo || null,
   });
@@ -199,9 +258,11 @@ async function saveNewTeam() {
   }
 }
 
+// ── Detalle ──────────────────────────────────────────────────────────────────
+
 async function openDetail(id) {
-  // Limpiar campos mientras carga
-  ["detail-name", "detail-coach", "detail-category", "detail-status", "detail-created", "detail-updated"]
+  ["detail-name", "detail-coach", "detail-sport", "detail-category",
+   "detail-status", "detail-created", "detail-updated"]
     .forEach((el) => { document.getElementById(el).textContent = "—"; });
   document.getElementById("detail-logo").style.display = "none";
   document.getElementById("detail-logo-placeholder").style.display = "flex";
@@ -223,6 +284,7 @@ async function openDetail(id) {
 
   document.getElementById("detail-name").textContent     = t.name;
   document.getElementById("detail-coach").textContent    = t.coach;
+  document.getElementById("detail-sport").textContent    = t.sport ?? "—";
   document.getElementById("detail-category").textContent = t.category;
   document.getElementById("detail-status").innerHTML     = t.active !== false
     ? '<span class="badge badge-active">Activo</span>'
@@ -272,6 +334,8 @@ async function openDetail(id) {
     </div>`;
 }
 
+// ── Editar equipo ────────────────────────────────────────────────────────────
+
 async function openEdit(id) {
   clearEditErrors();
 
@@ -282,11 +346,15 @@ async function openEdit(id) {
   }
 
   const t = result.data;
-  document.getElementById("edit-id").value       = t.id;
-  document.getElementById("edit-name").value     = t.name;
-  document.getElementById("edit-coach").value    = t.coach;
-  document.getElementById("edit-category").value = t.category;
-  document.getElementById("edit-logo").value     = t.logoUrl ?? "";
+  document.getElementById("edit-id").value    = t.id;
+  document.getElementById("edit-name").value  = t.name;
+  document.getElementById("edit-coach").value = t.coach;
+  document.getElementById("edit-logo").value  = t.logoUrl ?? "";
+
+  // Primero se establece el deporte y luego se repopulan las categorías
+  // pasando la categoría guardada para preseleccionarla
+  document.getElementById("edit-sport").value = t.sport ?? "";
+  updateCategoryOptions("edit-sport", "edit-category", t.category);
 
   modalEdit.show();
 }
@@ -295,6 +363,7 @@ async function saveEditTeam() {
   const id       = document.getElementById("edit-id").value;
   const name     = document.getElementById("edit-name").value.trim();
   const coach    = document.getElementById("edit-coach").value.trim();
+  const sport    = document.getElementById("edit-sport").value;
   const category = document.getElementById("edit-category").value;
   const logo     = document.getElementById("edit-logo").value.trim();
 
@@ -308,6 +377,9 @@ async function saveEditTeam() {
   const coachCheck = validateMinLength(coach, 3);
   if (!coachCheck.valid) { setFieldError("edit-coach", coachCheck.message); hasError = true; }
 
+  const sportCheck = validateRequired(sport);
+  if (!sportCheck.valid) { setFieldError("edit-sport", "Selecciona un deporte."); hasError = true; }
+
   const catCheck = validateRequired(category);
   if (!catCheck.valid) { setFieldError("edit-category", "Selecciona una categoría."); hasError = true; }
 
@@ -316,7 +388,6 @@ async function saveEditTeam() {
   const btn = document.getElementById("btn-edit-save");
   showLoader(btn, "Guardando...");
 
-  // Verificar duplicado excluyendo el propio equipo
   const dupCheck = await checkDuplicate("teams", "name", name, id);
   if (dupCheck.isDuplicate) {
     setFieldError("edit-name", "Ya existe otro equipo con ese nombre.");
@@ -327,6 +398,7 @@ async function saveEditTeam() {
   const result = await updateDocument("teams", id, {
     name,
     coach,
+    sport,
     category,
     logoUrl: logo || null,
   });
@@ -342,16 +414,15 @@ async function saveEditTeam() {
   }
 }
 
+// ── Toggle / Eliminar ────────────────────────────────────────────────────────
+
 function toggleTeamStatus(id, currentState) {
   const accion = currentState ? "desactivar" : "activar";
-  
   showConfirmModal(`¿Estás seguro de que deseas ${accion} este equipo?`, async () => {
-    
     const result = await toggleActive("teams", id, currentState);
-    
     if (result.success) {
       showAlert(`Equipo ${accion}do correctamente.`, "success");
-      loadTeams(); 
+      loadTeams();
     } else {
       showAlert(`Error al ${accion} el equipo: ` + result.message, "danger");
     }
@@ -360,37 +431,38 @@ function toggleTeamStatus(id, currentState) {
 
 function deleteTeam(id) {
   showConfirmModal(`ADVERTENCIA: Esta acción es irreversible. ¿Deseas eliminar este equipo de la base de datos?`, async () => {
-    
     const result = await deleteDocument("teams", id);
-    
     if (result.success) {
       showAlert("Equipo eliminado permanentemente.", "success");
-      loadTeams(); 
+      loadTeams();
     } else {
       showAlert("Error al eliminar el equipo: " + result.message, "danger");
     }
   });
 }
 
+// ── Filtros ──────────────────────────────────────────────────────────────────
+
 function applyFilters() {
   const searchTerm = document.getElementById("search-team").value.toLowerCase();
+  const sport      = document.getElementById("filter-sport").value;        // HU-27
   const category   = document.getElementById("filter-category").value;
   const status     = document.getElementById("filter-status").value;
 
   const filteredTeams = allTeams.filter((t) => {
-    const matchName = t.name.toLowerCase().includes(searchTerm);
-    
+    const matchName     = t.name.toLowerCase().includes(searchTerm);
+    const matchSport    = sport === "" || t.sport === sport;               // HU-27
     const matchCategory = category === "" || t.category === category;
-    
-    let matchStatus = true;
+    let matchStatus     = true;
     if (status === "active")   matchStatus = t.active !== false;
     if (status === "inactive") matchStatus = t.active === false;
-
-    return matchName && matchCategory && matchStatus;
+    return matchName && matchSport && matchCategory && matchStatus;
   });
 
   renderTable(filteredTeams);
 }
+
+// ── Utilidades de formulario ─────────────────────────────────────────────────
 
 function setFieldError(fieldId, message) {
   const el = document.getElementById(fieldId);
@@ -412,13 +484,16 @@ function clearCreateForm() {
   ["create-name", "create-coach", "create-logo"].forEach((id) => {
     document.getElementById(id).value = "";
   });
-  document.getElementById("create-category").value = "";
-  clearFieldErrors(["create-name", "create-coach", "create-category"]);
+  document.getElementById("create-sport").value    = "";
+  document.getElementById("create-category").innerHTML = `<option value="">— Selecciona un deporte primero —</option>`;
+  clearFieldErrors(["create-name", "create-coach", "create-sport", "create-category"]);
 }
 
 function clearEditErrors() {
-  clearFieldErrors(["edit-name", "edit-coach", "edit-category"]);
+  clearFieldErrors(["edit-name", "edit-coach", "edit-sport", "edit-category"]);
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   if (!str) return "";

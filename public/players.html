@@ -61,10 +61,12 @@
               <tr>
                 <th>#</th>
                 <th>Nombre</th>
+                <th>Tipo</th>
                 <th>Matrícula</th>
                 <th>Posición</th>
                 <th>Camiseta</th>
                 <th>Equipo</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="players-tbody"></tbody>
@@ -76,7 +78,7 @@
     </div>
   </main>
 
-  <!-- Modal -->
+  <!-- Modal: Nuevo jugador -->
   <div class="modal fade" id="modal-player" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -101,21 +103,30 @@
               <div class="invalid-feedback">Ingresa el nombre completo.</div>
             </div>
 
+            <!-- HU-28: Tipo de participante -->
             <div class="mb-3">
+              <label class="form-label fw-semibold">Tipo de participante <span class="text-danger">*</span></label>
+              <select class="form-select" id="participantType" required>
+                <option value="">Selecciona</option>
+                <option value="Estudiante">Estudiante</option>
+                <option value="Externo">Externo</option>
+              </select>
+              <div class="invalid-feedback">Selecciona el tipo de participante.</div>
+            </div>
+
+            <!-- HU-28: Matrícula visible solo si es Estudiante -->
+            <div class="mb-3" id="studentNumber-wrapper">
               <label class="form-label fw-semibold">Matrícula <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="studentNumber" required />
+              <input type="text" class="form-control" id="studentNumber" />
               <div class="invalid-feedback">Ingresa la matrícula.</div>
             </div>
 
             <div class="row g-3">
               <div class="col-6">
                 <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
-                <select class="form-select" id="position" required>
-                  <option value="">Selecciona</option>
-                  <option>Portero</option>
-                  <option>Defensa</option>
-                  <option>Mediocampista</option>
-                  <option>Delantero</option>
+                <!-- HU-29: Se habilita y repopula al seleccionar equipo -->
+                <select class="form-select" id="position" required disabled>
+                  <option value="">— Selecciona un equipo primero —</option>
                 </select>
                 <div class="invalid-feedback">Selecciona una posición.</div>
               </div>
@@ -131,6 +142,83 @@
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button class="btn btn-primary" id="btn-save">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HU-30: Modal detalle del jugador -->
+  <div class="modal fade" id="modal-detail" tabindex="-1" aria-labelledby="modal-detail-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-detail-label">
+            <i class="bi bi-person-fill me-2 text-primary"></i>Ficha del jugador
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width:56px;height:56px;background:rgba(124,58,237,.15);border:2px solid var(--border);">
+              <i class="bi bi-person-fill text-primary fs-4"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0" id="detail-name">—</h5>
+              <span class="text-muted small" id="detail-team">—</span>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Deporte</div>
+                <div class="fw-semibold" id="detail-sport">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Tipo</div>
+                <div class="fw-semibold" id="detail-type">—</div>
+              </div>
+            </div>
+            <!-- HU-28: Matrícula solo si es Estudiante -->
+            <div class="col-6" id="detail-matricula-row">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Matrícula</div>
+                <div class="fw-semibold" id="detail-matricula">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Posición</div>
+                <div class="fw-semibold" id="detail-position">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Camiseta</div>
+                <div class="fw-semibold" id="detail-shirt">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Estado</div>
+                <div id="detail-status">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Fecha de registro</div>
+                <div class="fw-semibold" id="detail-created">—</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>

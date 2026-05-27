@@ -53,13 +53,25 @@
       </div>
 
       <div class="row g-2 mb-3">
-        <div class="col-12 col-md-5">
+        <div class="col-12 col-md-4">
           <div class="input-group">
             <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search text-muted"></i></span>
             <input type="text" class="form-control border-start-0" id="search-team" placeholder="Buscar equipo por nombre...">
           </div>
         </div>
-        <div class="col-6 col-md-4">
+        <!-- NUEVO HU-27: Filtro por deporte -->
+        <div class="col-6 col-md-3">
+          <select class="form-select" id="filter-sport">
+            <option value="">Todos los deportes</option>
+            <option value="Fútbol">Fútbol</option>
+            <option value="Baloncesto">Baloncesto</option>
+            <option value="Voleibol">Voleibol</option>
+            <option value="Béisbol">Béisbol</option>
+            <option value="Softbol">Softbol</option>
+            <option value="Fútbol Americano">Fútbol Americano</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
           <select class="form-select" id="filter-category">
             <option value="">Todas las categorías</option>
             <option value="Varonil">Varonil</option>
@@ -69,7 +81,7 @@
             <option value="Sub-21">Sub-21</option>
           </select>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-2">
           <select class="form-select" id="filter-status">
             <option value="active">Solo activos</option>
             <option value="inactive">Solo inactivos</option>
@@ -96,6 +108,7 @@
     </div>
   </main>
 
+  <!-- Modal: Nuevo equipo -->
   <div class="modal fade" id="modal-create" tabindex="-1" aria-labelledby="modal-create-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -116,15 +129,25 @@
             <input type="text" class="form-control" id="create-coach" placeholder="Nombre completo" maxlength="80" />
             <div class="invalid-feedback" id="err-create-coach"></div>
           </div>
+          <!-- NUEVO: Deporte -->
+          <div class="mb-3">
+            <label class="form-label" for="create-sport">Deporte <span class="text-danger">*</span></label>
+            <select class="form-select" id="create-sport">
+              <option value="">— Selecciona —</option>
+              <option value="Fútbol">Fútbol</option>
+              <option value="Baloncesto">Baloncesto</option>
+              <option value="Voleibol">Voleibol</option>
+              <option value="Béisbol">Béisbol</option>
+              <option value="Softbol">Softbol</option>
+              <option value="Fútbol Americano">Fútbol Americano</option>
+            </select>
+            <div class="invalid-feedback" id="err-create-sport"></div>
+          </div>
+          <!-- Categoría: deshabilitada hasta elegir deporte -->
           <div class="mb-3">
             <label class="form-label" for="create-category">Categoría <span class="text-danger">*</span></label>
             <select class="form-select" id="create-category">
-              <option value="">— Selecciona —</option>
-              <option value="Varonil">Varonil</option>
-              <option value="Femenil">Femenil</option>
-              <option value="Mixto">Mixto</option>
-              <option value="Sub-18">Sub-18</option>
-              <option value="Sub-21">Sub-21</option>
+              <option value="">— Selecciona un deporte primero —</option>
             </select>
             <div class="invalid-feedback" id="err-create-category"></div>
           </div>
@@ -143,6 +166,7 @@
     </div>
   </div>
 
+  <!-- Modal: Detalle del equipo -->
   <div class="modal fade" id="modal-detail" tabindex="-1" aria-labelledby="modal-detail-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
@@ -174,6 +198,13 @@
               <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
                 <div class="text-muted small mb-1">Entrenador</div>
                 <div class="fw-semibold" id="detail-coach">—</div>
+              </div>
+            </div>
+            <!-- NUEVO: Deporte en detalle -->
+            <div class="col-sm-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Deporte</div>
+                <div class="fw-semibold" id="detail-sport">—</div>
               </div>
             </div>
             <div class="col-sm-6">
@@ -212,6 +243,7 @@
     </div>
   </div>
 
+  <!-- Modal: Editar equipo -->
   <div class="modal fade" id="modal-edit" tabindex="-1" aria-labelledby="modal-edit-label" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -233,15 +265,25 @@
             <input type="text" class="form-control" id="edit-coach" maxlength="80" />
             <div class="invalid-feedback" id="err-edit-coach"></div>
           </div>
+          <!-- NUEVO: Deporte en editar -->
+          <div class="mb-3">
+            <label class="form-label" for="edit-sport">Deporte <span class="text-danger">*</span></label>
+            <select class="form-select" id="edit-sport">
+              <option value="">— Selecciona —</option>
+              <option value="Fútbol">Fútbol</option>
+              <option value="Baloncesto">Baloncesto</option>
+              <option value="Voleibol">Voleibol</option>
+              <option value="Béisbol">Béisbol</option>
+              <option value="Softbol">Softbol</option>
+              <option value="Fútbol Americano">Fútbol Americano</option>
+            </select>
+            <div class="invalid-feedback" id="err-edit-sport"></div>
+          </div>
+          <!-- Categoría: se repopula al cambiar deporte -->
           <div class="mb-3">
             <label class="form-label" for="edit-category">Categoría <span class="text-danger">*</span></label>
-            <select class="form-select" id="edit-category">
-              <option value="">— Selecciona —</option>
-              <option value="Varonil">Varonil</option>
-              <option value="Femenil">Femenil</option>
-              <option value="Mixto">Mixto</option>
-              <option value="Sub-18">Sub-18</option>
-              <option value="Sub-21">Sub-21</option>
+            <select class="form-select" id="edit-category" disabled>
+              <option value="">— Selecciona un deporte primero —</option>
             </select>
             <div class="invalid-feedback" id="err-edit-category"></div>
           </div>
