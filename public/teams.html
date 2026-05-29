@@ -47,7 +47,7 @@
           <h2 class="fw-bold mb-0"><i class="bi bi-shield-fill me-2 text-primary"></i>Equipos</h2>
           <p class="text-muted small mb-0 mt-1">Gestión de equipos participantes</p>
         </div>
-        <button class="btn btn-primary btn-sm" id="btn-new-team">
+        <button class="btn btn-primary btn-sm" id="btn-new-team" data-admin-only>
           <i class="bi bi-plus-circle me-1"></i>Nuevo equipo
         </button>
       </div>
@@ -230,6 +230,13 @@
           <!-- Jugadores del equipo -->
           <h6 class="fw-semibold mb-2"><i class="bi bi-person-fill me-2 text-primary"></i>Jugadores del equipo</h6>
           <div id="detail-players-container">
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            </div>
+          </div>
+
+          <h6 class="fw-semibold mt-4 mb-2"><i class="bi bi-clock-history me-2 text-primary"></i>Partidos recientes</h6>
+          <div id="detail-matches-container">
             <div class="text-center py-3">
               <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
             </div>

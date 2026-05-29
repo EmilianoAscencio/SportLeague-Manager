@@ -1,5 +1,5 @@
 import { auth, db } from "./firebase.js";
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { validateRequired, validateMinLength, validateShirtNumber } from "./validators.js";
 import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
@@ -25,13 +25,16 @@ const ALL_POSITIONS = [...new Set(Object.values(SPORT_POSITIONS).flat())].sort()
 
 let allPlayers = [];
 let allTeams   = [];
+let isAdmin = false;
 
 const modal       = new bootstrap.Modal(document.getElementById("modal-player"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail"));
 const modalEdit = new bootstrap.Modal(document.getElementById("modal-edit"));
 
 preventBackAccess();
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   init();
@@ -206,15 +209,17 @@ function renderPlayers(players) {
         <button class="btn btn-outline-primary btn-sm btn-detail" data-id="${p.id}" title="Ver ficha">
           <i class="bi bi-eye"></i>
         </button>
-        <button class="btn btn-outline-warning btn-sm btn-edit ms-1" data-id="${p.id}" title="Editar">
-          <i class="bi bi-pencil-fill"></i>
-        </button>
-        <button class="btn ${statusClass} btn-sm btn-toggle ms-1" data-id="${p.id}" title="${statusTitle}">
-          <i class="bi ${statusIcon}"></i>
-        </button>
-        <button class="btn btn-outline-danger btn-sm btn-delete ms-1" data-id="${p.id}" title="Eliminar definitivamente">
-          <i class="bi bi-trash-fill"></i>
-        </button>
+        ${isAdmin ? `
+          <button class="btn btn-outline-warning btn-sm btn-edit ms-1" data-id="${p.id}" title="Editar">
+            <i class="bi bi-pencil-fill"></i>
+          </button>
+          <button class="btn ${statusClass} btn-sm btn-toggle ms-1" data-id="${p.id}" title="${statusTitle}">
+            <i class="bi ${statusIcon}"></i>
+          </button>
+          <button class="btn btn-outline-danger btn-sm btn-delete ms-1" data-id="${p.id}" title="Eliminar definitivamente">
+            <i class="bi bi-trash-fill"></i>
+          </button>
+        ` : ""}
       </td>
     </tr>`;
   }).join("");
@@ -274,6 +279,8 @@ function openDetail(id) {
 // ── Guardar jugador ──────────────────────────────────────────────────────────
 
 document.getElementById("btn-save").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const teamId          = document.getElementById("teamId").value;
   const fullName        = document.getElementById("fullName").value.trim();
   const participantType = document.getElementById("participantType").value;
@@ -333,6 +340,8 @@ document.getElementById("btn-save").addEventListener("click", async () => {
 // ── HU-31: Abrir modal de edición y cargar datos ─────────────────────────────
 
 function openEdit(id) {
+  if (!ensureAdmin()) return;
+
   const p = allPlayers.find((pl) => pl.id === id);
   if (!p) return;
 
@@ -356,6 +365,8 @@ function openEdit(id) {
 // ── HU-31: Guardar cambios de edición ────────────────────────────────────────
 
 document.getElementById("btn-edit-save").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const editId          = document.getElementById("edit-id").value;
   const teamId          = document.getElementById("edit-teamId").value;
   const fullName        = document.getElementById("edit-fullName").value.trim();
@@ -420,6 +431,8 @@ document.getElementById("btn-edit-save").addEventListener("click", async () => {
 // ── HU-32: Activar / Desactivar Jugador (Borrado Lógico) ─────────────────────
 
 async function togglePlayerStatus(id) {
+  if (!ensureAdmin()) return;
+
   // 1. Buscamos al jugador
   const p = allPlayers.find((pl) => pl.id === id);
   if (!p) return;
@@ -457,6 +470,8 @@ async function togglePlayerStatus(id) {
 // ── HU-33: Eliminar Jugador Definitivamente (Hard Delete) ────────────────────
 
 function deletePlayer(id) {
+  if (!ensureAdmin()) return;
+
   const p = allPlayers.find((pl) => pl.id === id);
   if (!p) return;
 
@@ -477,6 +492,12 @@ function deletePlayer(id) {
       showAlert("Ocurrió un error al intentar eliminar al jugador.", "danger");
     }
   });
+}
+
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar jugadores.", "warning");
+  return false;
 }
 
 // ── Reset del formulario ─────────────────────────────────────────────────────

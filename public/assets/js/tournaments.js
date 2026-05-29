@@ -1,16 +1,19 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import { createDocument, getDocuments, updateDocument, deleteDocument, checkDuplicate } from "./firestore.js";
 import { validateRequired, validateDate, validateDateChronology, validateReasonableYear } from "./validators.js";
 import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
 
 let allTournaments = [];
 let editingId      = null;
+let isAdmin = false;
 
 const modal       = new bootstrap.Modal(document.getElementById("modal-tournament"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail-tournament"));
 
 preventBackAccess();
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   loadTournaments();
@@ -18,6 +21,8 @@ requireAuth().then((user) => {
 
 // Cargar torneos
 document.getElementById("btn-new").addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+
   resetModal();
   modal.show();
 });
@@ -119,12 +124,14 @@ function renderTournaments(tournaments) {
           <button class="btn btn-sm btn-outline-secondary" data-view="${t.id}" title="Ver detalle">
             <i class="bi bi-eye"></i>
           </button>
-          <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger" data-del="${t.id}" title="Eliminar">
-            <i class="bi bi-trash"></i>
-          </button>
+          ${isAdmin ? `
+            <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" data-del="${t.id}" title="Eliminar">
+              <i class="bi bi-trash"></i>
+            </button>
+          ` : ""}
         </div>
       </td>
     </tr>`;
@@ -148,6 +155,8 @@ document.getElementById("tournaments-tbody").addEventListener("click", (e) => {
 
 // Eliminar torneo
 function deleteTournament(id) {
+  if (!ensureAdmin()) return;
+
   const t = allTournaments.find((t) => t.id === id);
   const name = t ? escHtml(t.name) : "este torneo";
 
@@ -299,6 +308,8 @@ async function openDetailModal(id) {
 
 // Editar torneo (incluye estado)
 function openEditModal(tournament) {
+  if (!ensureAdmin()) return;
+
   editingId = tournament.id;
   document.getElementById("modal-tournament-title").textContent = "Editar torneo";
   document.getElementById("t-name").value        = tournament.name;
@@ -317,6 +328,8 @@ function openEditModal(tournament) {
 
 // Guardar (crear o editar)
 document.getElementById("btn-save").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const name        = document.getElementById("t-name").value.trim();
   const sport       = document.getElementById("t-sport").value;
   const startDate   = document.getElementById("t-start").value;
@@ -433,6 +446,12 @@ function resetModal() {
   document.getElementById("t-status").value = "upcoming";
   document.querySelectorAll("#tournament-form .is-invalid")
     .forEach((el) => el.classList.remove("is-invalid"));
+}
+
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar torneos.", "warning");
+  return false;
 }
 
 // Utilidad

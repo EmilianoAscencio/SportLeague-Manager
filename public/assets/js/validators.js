@@ -24,6 +24,13 @@ export function validatePositiveNumber(value) {
   return { valid, message: valid ? "" : "Debe ser un número mayor a cero." };
 }
 
+// Valida números enteros mayores o iguales a cero
+export function validateNonNegativeInteger(value) {
+  const num = Number(value);
+  const valid = String(value).trim() !== "" && Number.isInteger(num) && num >= 0;
+  return { valid, message: valid ? "" : "Debe ser un entero mayor o igual a cero." };
+}
+
 export function validateDate(date) {
   if (!date || isNaN(Date.parse(date))) {
     return { valid: false, message: "Ingresa una fecha válida." };

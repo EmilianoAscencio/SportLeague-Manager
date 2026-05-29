@@ -1,14 +1,17 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
-import { createDocument, getDocuments } from "./firestore.js";
-import { validateRequired, validateDate } from "./validators.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
+import { createDocument, getDocuments, updateDocument } from "./firestore.js";
+import { validateRequired, validateDate, validateNonNegativeInteger } from "./validators.js";
 import { showAlert, showEmptyState } from "./ui.js";
 
 // Estado global
 let allMatches     = [];
 let allTournaments = [];
 let allTeams       = [];
+let selectedResultMatchId = null;
+let isAdmin = false;
 
 const modal = new bootstrap.Modal(document.getElementById("modal-match"));
+const resultModal = new bootstrap.Modal(document.getElementById("modal-result"));
 
 // Labels de estado 
 const STATUS_LABELS = {
@@ -19,7 +22,9 @@ const STATUS_LABELS = {
 
 // Init 
 preventBackAccess();
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   init();
@@ -213,6 +218,13 @@ function renderTable(matches) {
       <td class="text-nowrap">${time}</td>
       <td class="text-muted small">${location}</td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>
+        ${isAdmin && m.status === "scheduled"
+          ? `<button class="btn btn-outline-success btn-sm" data-action="result" data-id="${m.id}" title="Registrar resultado">
+              <i class="bi bi-clipboard-check"></i>
+            </button>`
+          : `<span class="text-muted small">—</span>`}
+      </td>
     </tr>`;
   }).join("");
 
@@ -228,20 +240,29 @@ function renderTable(matches) {
             <th>Hora</th>
             <th>Sede</th>
             <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  container.querySelectorAll("[data-action='result']").forEach((btn) => {
+    btn.addEventListener("click", () => openResultModal(btn.dataset.id));
+  });
 }
 
 // Guardar nuevo partido
 document.getElementById("btn-new-match").addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+
   resetModal();
   modal.show();
 });
 
 document.getElementById("btn-save-match").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const tournamentId = document.getElementById("m-tournament").value;
   const homeTeamId   = document.getElementById("m-home").value;
   const awayTeamId   = document.getElementById("m-away").value;
@@ -307,12 +328,87 @@ document.getElementById("btn-save-match").addEventListener("click", async () => 
   await loadAll();
 });
 
+document.getElementById("btn-save-result").addEventListener("click", saveMatchResult);
+
 // Reset modal 
 document.getElementById("modal-match").addEventListener("hidden.bs.modal", resetModal);
 
 function resetModal() {
   document.getElementById("match-form").reset();
   clearFieldErrors(["m-tournament", "m-home", "m-away", "m-date", "m-time"]);
+}
+
+function openResultModal(matchId) {
+  if (!ensureAdmin()) return;
+
+  const match = allMatches.find((m) => m.id === matchId);
+  if (!match) return;
+
+  selectedResultMatchId = matchId;
+  clearFieldErrors(["result-home", "result-away"]);
+
+  const teamMap = {};
+  allTeams.forEach((t) => { teamMap[t.id] = t.name; });
+
+  document.getElementById("result-match-summary").textContent =
+    `${teamMap[match.homeTeamId] ?? "Local"} vs ${teamMap[match.awayTeamId] ?? "Visitante"}`;
+  document.getElementById("result-home").value = match.homeScore ?? "";
+  document.getElementById("result-away").value = match.awayScore ?? "";
+  resultModal.show();
+}
+
+async function saveMatchResult() {
+  if (!ensureAdmin()) return;
+
+  if (!selectedResultMatchId) return;
+
+  const homeScore = document.getElementById("result-home").value;
+  const awayScore = document.getElementById("result-away").value;
+  clearFieldErrors(["result-home", "result-away"]);
+
+  const checks = [
+    { id: "result-home", result: validateNonNegativeInteger(homeScore) },
+    { id: "result-away", result: validateNonNegativeInteger(awayScore) },
+  ];
+
+  let hasError = false;
+  checks.forEach(({ id, result }) => {
+    if (!result.valid) {
+      setFieldError(id, result.message);
+      hasError = true;
+    }
+  });
+
+  if (hasError) return;
+
+  const btn = document.getElementById("btn-save-result");
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  const result = await updateDocument("matches", selectedResultMatchId, {
+    homeScore: Number(homeScore),
+    awayScore: Number(awayScore),
+    status: "played",
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Guardar resultado';
+
+  if (!result.success) {
+    showAlert("Error al guardar el resultado: " + result.message, "danger");
+    return;
+  }
+
+  showAlert("Resultado registrado correctamente.", "success");
+  resultModal.hide();
+  selectedResultMatchId = null;
+  await loadAll();
+}
+
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar partidos.", "warning");
+  return false;
 }
 
 // Loader

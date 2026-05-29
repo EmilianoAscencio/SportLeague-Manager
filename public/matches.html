@@ -45,7 +45,7 @@
           <h2 class="fw-bold mb-0"><i class="bi bi-calendar3 me-2 text-primary"></i>Partidos</h2>
           <p class="text-muted small mb-0 mt-1">Calendario y resultados de la liga</p>
         </div>
-        <button class="btn btn-primary btn-sm" id="btn-new-match">
+        <button class="btn btn-primary btn-sm" id="btn-new-match" data-admin-only>
           <i class="bi bi-plus-circle me-1"></i>Nuevo partido
         </button>
       </div>
@@ -162,6 +162,41 @@
           <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
           <button class="btn btn-primary btn-sm" id="btn-save-match">
             <i class="bi bi-floppy me-1"></i>Programar partido
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registrar resultado -->
+  <div class="modal fade" id="modal-result" tabindex="-1" aria-labelledby="modal-result-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-result-label">
+            <i class="bi bi-clipboard-check me-2 text-success"></i>Registrar resultado
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-3" id="result-match-summary">—</p>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold" for="result-home">Marcador local</label>
+              <input type="number" class="form-control" id="result-home" min="0" step="1" />
+              <div class="invalid-feedback" id="err-result-home"></div>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold" for="result-away">Marcador visitante</label>
+              <input type="number" class="form-control" id="result-away" min="0" step="1" />
+              <div class="invalid-feedback" id="err-result-away"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button class="btn btn-success btn-sm" id="btn-save-result">
+            <i class="bi bi-floppy me-1"></i>Guardar resultado
           </button>
         </div>
       </div>

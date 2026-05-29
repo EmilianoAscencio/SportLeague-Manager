@@ -1,4 +1,4 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import {
   createDocument,
   getDocuments,
@@ -22,6 +22,7 @@ const SPORT_CATEGORIES = {
 };
 
 let allTeams = [];
+let isAdmin = false;
 
 const modalCreate = new bootstrap.Modal(document.getElementById("modal-create"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail"));
@@ -38,7 +39,9 @@ document.getElementById("edit-sport").addEventListener("change", () => {
   updateCategoryOptions("edit-sport", "edit-category");
 });
 
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   loadTeams();
@@ -110,15 +113,17 @@ function renderTable(teams) {
           <button class="btn btn-outline-primary btn-sm" data-action="detail" data-id="${t.id}" title="Ver detalle">
             <i class="bi bi-eye"></i>
           </button>
-          <button class="btn btn-outline-warning btn-sm" data-action="edit" data-id="${t.id}" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
-            <i class="bi ${toggleIcon}"></i>
-          </button>
-          <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${t.id}" title="Eliminar permanentemente">
-            <i class="bi bi-trash"></i>
-          </button>
+          ${isAdmin ? `
+            <button class="btn btn-outline-warning btn-sm" data-action="edit" data-id="${t.id}" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
+              <i class="bi ${toggleIcon}"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${t.id}" title="Eliminar permanentemente">
+              <i class="bi bi-trash"></i>
+            </button>
+          ` : ""}
         </div>
       </td>
     </tr>`;
@@ -156,6 +161,7 @@ function renderTable(teams) {
 
 function bindEvents() {
   document.getElementById("btn-new-team").addEventListener("click", () => {
+    if (!ensureAdmin()) return;
     clearCreateForm();
     modalCreate.show();
   });
@@ -204,6 +210,8 @@ function updateCategoryOptions(sportSelectId, categorySelectId, selectedCategory
 // ── Crear equipo ─────────────────────────────────────────────────────────────
 
 async function saveNewTeam() {
+  if (!ensureAdmin()) return;
+
   const name     = document.getElementById("create-name").value.trim();
   const coach    = document.getElementById("create-coach").value.trim();
   const sport    = document.getElementById("create-sport").value;
@@ -270,6 +278,10 @@ async function openDetail(id) {
     <div class="text-center py-3">
       <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
     </div>`;
+  document.getElementById("detail-matches-container").innerHTML = `
+    <div class="text-center py-3">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+    </div>`;
 
   modalDetail.show();
 
@@ -302,6 +314,7 @@ async function openDetail(id) {
   // Cargar jugadores del equipo
   const playersResult = await getDocuments("players");
   const playersContainer = document.getElementById("detail-players-container");
+  await renderRecentMatches(id);
 
   if (!playersResult.success) {
     playersContainer.innerHTML = `<p class="text-muted small">No se pudieron cargar los jugadores.</p>`;
@@ -334,6 +347,67 @@ async function openDetail(id) {
     </div>`;
 }
 
+async function renderRecentMatches(teamId) {
+  const container = document.getElementById("detail-matches-container");
+  const [matchesResult, teamsResult] = await Promise.all([
+    getDocuments("matches"),
+    getDocuments("teams"),
+  ]);
+
+  if (!matchesResult.success) {
+    container.innerHTML = `<p class="text-muted small">No se pudieron cargar los partidos recientes.</p>`;
+    return;
+  }
+
+  const teamMap = {};
+  if (teamsResult.success) {
+    teamsResult.data.forEach((team) => { teamMap[team.id] = team.name; });
+  }
+
+  const matches = matchesResult.data
+    .filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId)
+    .sort((a, b) => `${b.matchDate || ""} ${b.matchTime || ""}`.localeCompare(`${a.matchDate || ""} ${a.matchTime || ""}`))
+    .slice(0, 5);
+
+  if (matches.length === 0) {
+    showEmptyState(container, "Este equipo todavía no tiene partidos registrados.");
+    return;
+  }
+
+  const statusLabels = {
+    scheduled: { label: "Programado", cls: "badge-upcoming" },
+    played: { label: "Jugado", cls: "badge-active" },
+    cancelled: { label: "Cancelado", cls: "badge-danger" },
+  };
+
+  const rows = matches.map((m) => {
+    const status = statusLabels[m.status] ?? statusLabels.scheduled;
+    const home = escHtml(teamMap[m.homeTeamId] ?? "—");
+    const away = escHtml(teamMap[m.awayTeamId] ?? "—");
+    const score = m.status === "played"
+      ? `<span class="fw-bold">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>`
+      : `<span class="text-muted">vs</span>`;
+
+    return `
+      <tr>
+        <td>${home} ${score} ${away}</td>
+        <td class="text-nowrap">${formatDate(m.matchDate)}</td>
+        <td class="text-nowrap">${m.matchTime ?? "—"}</td>
+        <td><span class="badge ${status.cls}">${status.label}</span></td>
+      </tr>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Partido</th><th>Fecha</th><th>Hora</th><th>Estado</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 // ── Editar equipo ────────────────────────────────────────────────────────────
 
 async function openEdit(id) {
@@ -360,6 +434,8 @@ async function openEdit(id) {
 }
 
 async function saveEditTeam() {
+  if (!ensureAdmin()) return;
+
   const id       = document.getElementById("edit-id").value;
   const name     = document.getElementById("edit-name").value.trim();
   const coach    = document.getElementById("edit-coach").value.trim();
@@ -417,6 +493,8 @@ async function saveEditTeam() {
 // ── Toggle / Eliminar ────────────────────────────────────────────────────────
 
 function toggleTeamStatus(id, currentState) {
+  if (!ensureAdmin()) return;
+
   const accion = currentState ? "desactivar" : "activar";
   showConfirmModal(`¿Estás seguro de que deseas ${accion} este equipo?`, async () => {
     const result = await toggleActive("teams", id, currentState);
@@ -430,6 +508,8 @@ function toggleTeamStatus(id, currentState) {
 }
 
 function deleteTeam(id) {
+  if (!ensureAdmin()) return;
+
   showConfirmModal(`ADVERTENCIA: Esta acción es irreversible. ¿Deseas eliminar este equipo de la base de datos?`, async () => {
     const result = await deleteDocument("teams", id);
     if (result.success) {
@@ -439,6 +519,12 @@ function deleteTeam(id) {
       showAlert("Error al eliminar el equipo: " + result.message, "danger");
     }
   });
+}
+
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar equipos.", "warning");
+  return false;
 }
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
