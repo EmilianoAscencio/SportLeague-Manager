@@ -119,6 +119,20 @@
           </div>
         </div>
 
+        <div class="col-12 col-lg-6">
+          <div class="metric-card h-100" style="--accent:#F59E0B;">
+            <div class="d-flex justify-content-between align-items-start">
+              <div style="min-width:0;">
+                <div class="metric-label mb-1"><i class="bi bi-trophy-fill text-warning me-1"></i>Equipo líder</div>
+                <div class="metric-value text-truncate" id="stat-leader-name" style="color:var(--warning);font-size:1.25rem;">—</div>
+                <div class="text-muted small mt-1" id="stat-leader-pts"></div>
+              </div>
+              <span class="metric-icon"><i class="bi bi-shield-fill"></i></span>
+            </div>
+            <a href="matches.html" class="stretched-link" aria-label="Ver tabla de posiciones"></a>
+          </div>
+        </div>
+
       </div>
 
       <!-- Segunda fila: accesos rápidos -->
@@ -211,19 +225,50 @@
           : "—";
       }
 
-      const matchesResult = await getDocuments("matches");
-      const scheduledEl = document.getElementById("stat-matches-scheduled");
-      const playedEl = document.getElementById("stat-matches-played");
+      const [matchesResult, teamsResult] = await Promise.all([
+        getDocuments("matches"),
+        getDocuments("teams"),
+      ]);
+      const scheduledEl  = document.getElementById("stat-matches-scheduled");
+      const playedEl     = document.getElementById("stat-matches-played");
+      const leaderNameEl = document.getElementById("stat-leader-name");
+      const leaderPtsEl  = document.getElementById("stat-leader-pts");
 
       if (!matchesResult.success) {
-        scheduledEl.textContent = "—";
-        playedEl.textContent = "—";
+        scheduledEl.textContent  = "—";
+        playedEl.textContent     = "—";
         return;
       }
 
       const activeMatches = matchesResult.data.filter(d => d.active !== false);
       scheduledEl.textContent = activeMatches.filter(m => m.status === "scheduled").length;
-      playedEl.textContent = activeMatches.filter(m => m.status === "played").length;
+      playedEl.textContent    = activeMatches.filter(m => m.status === "played").length;
+
+      // Calcular equipo líder (más puntos en partidos jugados)
+      const playedMatches = activeMatches.filter(m => m.status === "played");
+      const pts = {};
+      playedMatches.forEach(m => {
+        const h = m.homeTeamId, a = m.awayTeamId;
+        const hs = Number(m.homeScore), as_ = Number(m.awayScore);
+        pts[h] = (pts[h] || 0);
+        pts[a] = (pts[a] || 0);
+        if (hs > as_)       { pts[h] += 3; }
+        else if (hs < as_)  { pts[a] += 3; }
+        else                { pts[h] += 1; pts[a] += 1; }
+      });
+
+      const entries = Object.entries(pts);
+      if (entries.length === 0 || !teamsResult.success) {
+        leaderNameEl.textContent = "Sin datos";
+        leaderPtsEl.textContent  = "";
+      } else {
+        entries.sort(([, a], [, b]) => b - a);
+        const [leaderId, leaderPts] = entries[0];
+        const teamsMap = {};
+        teamsResult.data.forEach(t => { teamsMap[t.id] = t.name; });
+        leaderNameEl.textContent = teamsMap[leaderId] ?? "—";
+        leaderPtsEl.textContent  = `${leaderPts} punto${leaderPts !== 1 ? "s" : ""}`;
+      }
     }
   </script>
 </body>
