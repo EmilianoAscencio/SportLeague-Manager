@@ -19,7 +19,7 @@ requireAuth().then(async (user) => {
   loadTournaments();
 });
 
-// Cargar torneos
+
 document.getElementById("btn-new").addEventListener("click", () => {
   if (!ensureAdmin()) return;
 
@@ -38,7 +38,7 @@ async function loadTournaments() {
   renderTournaments(allTournaments);
 }
 
-// Métricas 
+
 function renderMetrics(tournaments) {
   const row = document.getElementById("metrics-row");
   if (!row) return;
@@ -84,7 +84,7 @@ function renderMetrics(tournaments) {
   `;
 }
 
-// Status labels
+
 const STATUS_LABELS = {
   upcoming:  { label: "Próximo",    cls: "badge-upcoming" },
   active:    { label: "En curso",   cls: "badge-active"   },
@@ -98,7 +98,7 @@ function formatDate(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-// Render tabla 
+
 function renderTournaments(tournaments) {
   const tbody = document.getElementById("tournaments-tbody");
   const empty = document.getElementById("tournaments-empty");
@@ -139,7 +139,7 @@ function renderTournaments(tournaments) {
 
 }
 
-// Delegación persistente
+
 document.getElementById("tournaments-tbody").addEventListener("click", (e) => {
   const viewBtn = e.target.closest("[data-view]");
   const editBtn = e.target.closest("[data-edit]");
@@ -153,7 +153,7 @@ document.getElementById("tournaments-tbody").addEventListener("click", (e) => {
   if (delBtn) deleteTournament(delBtn.dataset.del);
 });
 
-// Eliminar torneo
+
 function deleteTournament(id) {
   if (!ensureAdmin()) return;
 
@@ -174,7 +174,7 @@ function deleteTournament(id) {
   );
 }
 
-// Modal de detalle
+
 async function openDetailModal(id) {
   const t = allTournaments.find((t) => t.id === id);
   if (!t) return;
@@ -182,7 +182,7 @@ async function openDetailModal(id) {
   const body = document.getElementById("modal-detail-body");
   const st   = STATUS_LABELS[t.status] ?? STATUS_LABELS.upcoming;
 
-  // Render info básica
+  
   body.innerHTML = `
     <div class="row g-3 mb-4">
       <div class="col-12">
@@ -237,7 +237,7 @@ async function openDetailModal(id) {
 
   modalDetail.show();
 
-  // Cargar partidos de este torneo
+  
   const matchesResult = await getDocuments("matches");
   const container = document.getElementById("detail-matches-container");
   if (!container) return;
@@ -247,7 +247,7 @@ async function openDetailModal(id) {
     return;
   }
 
-  // Cargar equipos para resolver nombres
+  
   const teamsResult = await getDocuments("teams");
   const teamsMap = {};
   if (teamsResult.success) {
@@ -306,7 +306,7 @@ async function openDetailModal(id) {
     </div>`;
 }
 
-// Editar torneo (incluye estado)
+
 function openEditModal(tournament) {
   if (!ensureAdmin()) return;
 
@@ -318,7 +318,7 @@ function openEditModal(tournament) {
   document.getElementById("t-end").value         = tournament.endDate;
   document.getElementById("t-description").value = tournament.description ?? "";
 
-  // Mostrar y preseleccionar estado
+  
   const statusWrap = document.getElementById("t-status-wrap");
   statusWrap.classList.remove("d-none");
   document.getElementById("t-status").value = tournament.status ?? "upcoming";
@@ -326,7 +326,7 @@ function openEditModal(tournament) {
   modal.show();
 }
 
-// Guardar (crear o editar)
+
 document.getElementById("btn-save").addEventListener("click", async () => {
   if (!ensureAdmin()) return;
 
@@ -352,13 +352,13 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     document.getElementById(id).classList.toggle("is-invalid", !result.valid);
     if (!result.valid) {
       isValid = false;
-      // Actualizar texto del feedback si el elemento tiene id dinámico (ej: t-start-feedback)
+     
       const feedbackEl = document.getElementById(id + "-feedback");
       if (feedbackEl && result.message) feedbackEl.textContent = result.message;
     }
   });
 
-  // Validación de cronología: Fecha Fin debe ser >= Fecha Inicio (HU-35)
+  
   if (isValid) {
     const chronologyCheck = validateDateChronology(startDate, endDate);
     if (!chronologyCheck.valid) {
@@ -395,11 +395,11 @@ document.getElementById("btn-save").addEventListener("click", async () => {
 
   if (!editingId) {
     if (endDate < todayStr) {
-      finalStatus = "finished"; // El torneo ya terminó en el pasado
+      finalStatus = "finished"; 
     } else if (startDate <= todayStr && endDate >= todayStr) {
-      finalStatus = "active";   // El torneo empezó hoy o antes, y termina hoy o después
+      finalStatus = "active";   
     } else {
-      finalStatus = "upcoming"; // El torneo empieza en el futuro
+      finalStatus = "upcoming"; 
     }
   }
 
@@ -432,7 +432,7 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   btn.disabled = false;
 });
 
-// Reset modal
+
 document.getElementById("modal-tournament").addEventListener("hidden.bs.modal", resetModal);
 
 function resetModal() {
@@ -441,7 +441,7 @@ function resetModal() {
   document.getElementById("modal-tournament-title").textContent = "Nuevo torneo";
   document.getElementById("t-start-feedback").textContent = "Ingresa la fecha de inicio.";
   document.getElementById("t-end-feedback").textContent   = "Ingresa la fecha de fin.";
-  // Ocultar campo estado en modo crear
+  
   document.getElementById("t-status-wrap").classList.add("d-none");
   document.getElementById("t-status").value = "upcoming";
   document.querySelectorAll("#tournament-form .is-invalid")
@@ -454,7 +454,7 @@ function ensureAdmin() {
   return false;
 }
 
-// Utilidad
+
 function escHtml(str) {
   if (!str) return "";
   return String(str)
