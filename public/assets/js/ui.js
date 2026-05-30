@@ -14,7 +14,7 @@ export function showAlert(message, type = "success") {
   setTimeout(() => alert.remove(), 4000);
 }
 
-// Deshabilita el botón y muestra texto de carga
+
 export function showLoader(buttonEl, loadingText = "Cargando...") {
   buttonEl.disabled = true;
   buttonEl.dataset.originalText = buttonEl.innerHTML;
@@ -24,13 +24,13 @@ export function showLoader(buttonEl, loadingText = "Cargando...") {
   `;
 }
 
-// Restaura el botón a su estado original
+
 export function hideLoader(buttonEl, originalText = null) {
   buttonEl.disabled = false;
   buttonEl.innerHTML = originalText ?? buttonEl.dataset.originalText;
 }
 
-// Muestra un estado vacío dentro de un contenedor
+
 export function showEmptyState(containerEl, message = "No hay datos disponibles.") {
   containerEl.innerHTML = `
     <div class="text-center text-muted py-5">
@@ -40,7 +40,7 @@ export function showEmptyState(containerEl, message = "No hay datos disponibles.
   `;
 }
 
-// Muestra un modal de confirmación antes de eliminar o desactivar
+
 export function showConfirmModal(message, onConfirm) {
   const existing = document.getElementById("confirm-modal");
   if (existing) existing.remove();
