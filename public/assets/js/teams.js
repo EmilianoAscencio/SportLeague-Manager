@@ -11,7 +11,7 @@ import {
 import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
 
-// ── Categorías disponibles por deporte ──────────────────────────────────────
+
 const SPORT_CATEGORIES = {
   "Fútbol":           ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
   "Baloncesto":       ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
@@ -30,8 +30,7 @@ const modalEdit   = new bootstrap.Modal(document.getElementById("modal-edit"));
 
 preventBackAccess();
 
-// Bindear eventos de deporte al nivel raíz, sin esperar auth
-// (los selects ya existen en el DOM cuando el módulo carga)
+
 document.getElementById("create-sport").addEventListener("change", () => {
   updateCategoryOptions("create-sport", "create-category");
 });
@@ -48,7 +47,7 @@ requireAuth().then(async (user) => {
   bindEvents();
 });
 
-// ── Carga y renderizado ──────────────────────────────────────────────────────
+
 
 async function loadTeams() {
   const container = document.getElementById("table-container");
@@ -157,7 +156,7 @@ function renderTable(teams) {
   });
 }
 
-// ── Eventos generales ────────────────────────────────────────────────────────
+
 
 function bindEvents() {
   document.getElementById("btn-new-team").addEventListener("click", () => {
@@ -170,20 +169,20 @@ function bindEvents() {
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
 
   document.getElementById("search-team").addEventListener("input", applyFilters);
-  document.getElementById("filter-sport").addEventListener("change", applyFilters);   // HU-27
+  document.getElementById("filter-sport").addEventListener("change", applyFilters);   
   document.getElementById("filter-category").addEventListener("change", applyFilters);
   document.getElementById("filter-status").addEventListener("change", applyFilters);
 
-  // Nota: los eventos de deporte ya se bindean al nivel raíz (fuera de requireAuth)
+  
 }
 
-// ── Lógica de deporte / categoría ───────────────────────────────────────────
+
 
 /**
- * Repopula el select de categoría según el deporte seleccionado.
- * @param {string} sportSelectId  - id del select de deporte
- * @param {string} categorySelectId - id del select de categoría
- * @param {string} [selectedCategory] - valor a preseleccionar (para edición)
+ * 
+ * @param {string} sportSelectId  
+ * @param {string} categorySelectId 
+ * @param {string} [selectedCategory] 
  */
 function updateCategoryOptions(sportSelectId, categorySelectId, selectedCategory = "") {
   const sport      = document.getElementById(sportSelectId).value;
@@ -207,7 +206,7 @@ function updateCategoryOptions(sportSelectId, categorySelectId, selectedCategory
   });
 }
 
-// ── Crear equipo ─────────────────────────────────────────────────────────────
+
 
 async function saveNewTeam() {
   if (!ensureAdmin()) return;
@@ -266,7 +265,7 @@ async function saveNewTeam() {
   }
 }
 
-// ── Detalle ──────────────────────────────────────────────────────────────────
+
 
 async function openDetail(id) {
   ["detail-name", "detail-coach", "detail-sport", "detail-category",
@@ -311,7 +310,7 @@ async function openDetail(id) {
     document.getElementById("detail-logo-placeholder").style.display = "none";
   }
 
-  // Cargar jugadores del equipo
+  
   const playersResult = await getDocuments("players");
   const playersContainer = document.getElementById("detail-players-container");
   await renderRecentMatches(id);
@@ -408,7 +407,7 @@ async function renderRecentMatches(teamId) {
     </div>`;
 }
 
-// ── Editar equipo ────────────────────────────────────────────────────────────
+
 
 async function openEdit(id) {
   clearEditErrors();
@@ -425,8 +424,7 @@ async function openEdit(id) {
   document.getElementById("edit-coach").value = t.coach;
   document.getElementById("edit-logo").value  = t.logoUrl ?? "";
 
-  // Primero se establece el deporte y luego se repopulan las categorías
-  // pasando la categoría guardada para preseleccionarla
+  
   document.getElementById("edit-sport").value = t.sport ?? "";
   updateCategoryOptions("edit-sport", "edit-category", t.category);
 
@@ -490,7 +488,7 @@ async function saveEditTeam() {
   }
 }
 
-// ── Toggle / Eliminar ────────────────────────────────────────────────────────
+
 
 function toggleTeamStatus(id, currentState) {
   if (!ensureAdmin()) return;
@@ -527,7 +525,7 @@ function ensureAdmin() {
   return false;
 }
 
-// ── Filtros ──────────────────────────────────────────────────────────────────
+
 
 function applyFilters() {
   const searchTerm = document.getElementById("search-team").value.toLowerCase();
@@ -548,7 +546,7 @@ function applyFilters() {
   renderTable(filteredTeams);
 }
 
-// ── Utilidades de formulario ─────────────────────────────────────────────────
+
 
 function setFieldError(fieldId, message) {
   const el = document.getElementById(fieldId);
@@ -579,7 +577,7 @@ function clearEditErrors() {
   clearFieldErrors(["edit-name", "edit-coach", "edit-sport", "edit-category"]);
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function escHtml(str) {
   if (!str) return "";
