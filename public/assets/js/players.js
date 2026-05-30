@@ -4,7 +4,7 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp
 import { validateRequired, validateMinLength, validateShirtNumber } from "./validators.js";
 import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
 
-// ── HU-29: Posiciones por deporte ────────────────────────────────────────────
+
 const SPORT_POSITIONS = {
   "Fútbol":           ["Portero", "Defensa", "Mediocampista", "Delantero"],
   "Baloncesto":       ["Base", "Escolta", "Alero", "Ala-Pívot", "Pívot"],
@@ -20,7 +20,7 @@ const SPORT_POSITIONS = {
                        "Linebacker", "Cornerback", "Safety", "Pateador"],
 };
 
-// Todas las posiciones combinadas (fallback para equipos sin deporte registrado)
+
 const ALL_POSITIONS = [...new Set(Object.values(SPORT_POSITIONS).flat())].sort();
 
 let allPlayers = [];
@@ -40,7 +40,7 @@ requireAuth().then(async (user) => {
   init();
 });
 
-// ── Inicialización ───────────────────────────────────────────────────────────
+
 
 async function init() {
   await loadTeams();
@@ -48,7 +48,7 @@ async function init() {
   bindFormEvents();
 }
 
-// ── Carga de datos ───────────────────────────────────────────────────────────
+
 
 async function loadTeams() {
   const snapshot = await getDocs(collection(db, "teams"));
@@ -67,7 +67,7 @@ async function loadPlayers() {
   renderPlayers(allPlayers);
 }
 
-// HU:34 ── Filtros y Búsqueda en tiempo real ────────────────────────────────────────
+
 
 function applyFilters() {
   const teamId = document.getElementById("filter-team").value;
@@ -86,23 +86,21 @@ function applyFilters() {
 document.getElementById("filter-team").addEventListener("change", applyFilters);
 document.getElementById("search-player").addEventListener("input", applyFilters);
 
-// ── Eventos del formulario ───────────────────────────────────────────────────
-
 function bindFormEvents() {
-  // HU-29: Cambio de equipo → actualizar posiciones
+  
   document.getElementById("teamId").addEventListener("change", (e) => {
     const selectedId = e.target.value;
     if (!selectedId) {
-      // Sin equipo → deshabilitar posición
+     
       resetPositionSelect();
       return;
     }
     const team = allTeams.find((t) => t.id === selectedId);
-    // Si el equipo tiene deporte, carga sus posiciones; si no, carga todas
+    
     updatePositionOptions(team?.sport ?? null);
   });
 
-  // HU-28: Cambio de tipo → mostrar/ocultar matrícula
+  
   document.getElementById("participantType").addEventListener("change", (e) => {
     const isStudent = e.target.value === "Estudiante";
     const wrapper   = document.getElementById("studentNumber-wrapper");
@@ -113,7 +111,7 @@ function bindFormEvents() {
     }
   });
 
-  // HU-31: Editar jugador 
+  
   document.getElementById("edit-teamId").addEventListener("change", (e) => {
     const selectedId = e.target.value;
     if (!selectedId) {
@@ -149,9 +147,7 @@ function updateEditPositionOptions(sport) {
   posSelect.disabled = false;
 }
 
-// ── HU-29: Manejo del select de posición ─────────────────────────────────────
 
-/** Deshabilita el select de posición (estado inicial / sin equipo) */
 function resetPositionSelect() {
   const posSelect = document.getElementById("position");
   posSelect.innerHTML = `<option value="">— Selecciona un equipo primero —</option>`;
@@ -159,8 +155,8 @@ function resetPositionSelect() {
 }
 
 /**
- * Popula y habilita el select de posición.
- * @param {string|null} sport - deporte del equipo, o null si no tiene registrado
+ * 
+ * @param {string|null} sport 
  */
 function updatePositionOptions(sport) {
   const posSelect = document.getElementById("position");
@@ -173,7 +169,7 @@ function updatePositionOptions(sport) {
   posSelect.disabled = false;
 }
 
-// ── Renderizar tabla ─────────────────────────────────────────────────────────
+
 
 function renderPlayers(players) {
   const tbody = document.getElementById("players-tbody");
@@ -241,7 +237,7 @@ function renderPlayers(players) {
   });
 }
 
-// ── HU-30: Modal de detalle ──────────────────────────────────────────────────
+
 
 function openDetail(id) {
   const p = allPlayers.find((pl) => pl.id === id);
@@ -276,7 +272,7 @@ function openDetail(id) {
   new bootstrap.Modal(document.getElementById("modal-detail")).show();
 }
 
-// ── Guardar jugador ──────────────────────────────────────────────────────────
+
 
 document.getElementById("btn-save").addEventListener("click", async () => {
   if (!ensureAdmin()) return;
@@ -337,7 +333,6 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   await loadPlayers();
 });
 
-// ── HU-31: Abrir modal de edición y cargar datos ─────────────────────────────
 
 function openEdit(id) {
   if (!ensureAdmin()) return;
@@ -362,7 +357,7 @@ function openEdit(id) {
   modalEdit.show();
 }
 
-// ── HU-31: Guardar cambios de edición ────────────────────────────────────────
+
 
 document.getElementById("btn-edit-save").addEventListener("click", async () => {
   if (!ensureAdmin()) return;
@@ -428,7 +423,7 @@ document.getElementById("btn-edit-save").addEventListener("click", async () => {
   }
 });
 
-// ── HU-32: Activar / Desactivar Jugador (Borrado Lógico) ─────────────────────
+
 
 async function togglePlayerStatus(id) {
   if (!ensureAdmin()) return;
@@ -467,7 +462,7 @@ async function togglePlayerStatus(id) {
   });
 }
 
-// ── HU-33: Eliminar Jugador Definitivamente (Hard Delete) ────────────────────
+
 
 function deletePlayer(id) {
   if (!ensureAdmin()) return;
@@ -500,7 +495,7 @@ function ensureAdmin() {
   return false;
 }
 
-// ── Reset del formulario ─────────────────────────────────────────────────────
+
 
 function resetForm() {
   document.getElementById("player-form").reset();
@@ -511,7 +506,7 @@ function resetForm() {
 
 document.getElementById("modal-player").addEventListener("hidden.bs.modal", resetForm);
 
-// ── Helper ───────────────────────────────────────────────────────────────────
+
 
 function escHtml(str) {
   if (!str) return "";
