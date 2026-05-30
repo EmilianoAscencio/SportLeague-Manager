@@ -1,14 +1,18 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
-import { createDocument, getDocuments } from "./firestore.js";
-import { validateRequired, validateDate } from "./validators.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
+import { createDocument, getDocuments, updateDocument } from "./firestore.js";
+import { validateRequired, validateDate, validateNonNegativeInteger } from "./validators.js";
 import { showAlert, showEmptyState } from "./ui.js";
 
 // Estado global
 let allMatches     = [];
 let allTournaments = [];
 let allTeams       = [];
+let selectedResultMatchId = null;
+let editMatchId = null;
+let isAdmin = false;
 
 const modal = new bootstrap.Modal(document.getElementById("modal-match"));
+const resultModal = new bootstrap.Modal(document.getElementById("modal-result"));
 
 // Labels de estado 
 const STATUS_LABELS = {
@@ -19,7 +23,9 @@ const STATUS_LABELS = {
 
 // Init 
 preventBackAccess();
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   init();
@@ -79,6 +85,17 @@ function populateSelects() {
     .join("");
   document.getElementById("m-home").innerHTML +=  teamOptions;
   document.getElementById("m-away").innerHTML +=  teamOptions;
+
+  const standingsSel = document.getElementById("standings-tournament");
+  if (standingsSel) {
+    standingsSel.innerHTML = '<option value="">— Selecciona un torneo —</option>';
+    allTournaments.forEach((t) => {
+      const opt = document.createElement("option");
+      opt.value       = t.id;
+      opt.textContent = t.name;
+      standingsSel.appendChild(opt);
+    });
+  }
 }
 
 // Métricas 
@@ -136,6 +153,11 @@ function bindFilterEvents() {
     document.getElementById("filter-status").value     = "";
     applyFilters();
   });
+
+  const standingsSel = document.getElementById("standings-tournament");
+  if (standingsSel) {
+    standingsSel.addEventListener("change", () => renderStandings(standingsSel.value));
+  }
 }
 
 function applyFilters() {
@@ -213,6 +235,21 @@ function renderTable(matches) {
       <td class="text-nowrap">${time}</td>
       <td class="text-muted small">${location}</td>
       <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>
+        ${isAdmin && m.status === "scheduled"
+          ? `<div class="d-flex gap-1 flex-wrap">
+              <button class="btn btn-outline-primary btn-sm" data-action="edit" data-id="${m.id}" title="Editar partido">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-outline-success btn-sm" data-action="result" data-id="${m.id}" title="Registrar resultado">
+                <i class="bi bi-clipboard-check"></i>
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="cancel" data-id="${m.id}" title="Cancelar partido">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            </div>`
+          : `<span class="text-muted small">—</span>`}
+      </td>
     </tr>`;
   }).join("");
 
@@ -228,20 +265,35 @@ function renderTable(matches) {
             <th>Hora</th>
             <th>Sede</th>
             <th>Estado</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  container.querySelectorAll("[data-action='result']").forEach((btn) => {
+    btn.addEventListener("click", () => openResultModal(btn.dataset.id));
+  });
+  container.querySelectorAll("[data-action='edit']").forEach((btn) => {
+    btn.addEventListener("click", () => openEditModal(btn.dataset.id));
+  });
+  container.querySelectorAll("[data-action='cancel']").forEach((btn) => {
+    btn.addEventListener("click", () => cancelMatch(btn.dataset.id));
+  });
 }
 
 // Guardar nuevo partido
 document.getElementById("btn-new-match").addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+
   resetModal();
   modal.show();
 });
 
 document.getElementById("btn-save-match").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const tournamentId = document.getElementById("m-tournament").value;
   const homeTeamId   = document.getElementById("m-home").value;
   const awayTeamId   = document.getElementById("m-away").value;
@@ -282,30 +334,42 @@ document.getElementById("btn-save-match").addEventListener("click", async () => 
   btn.disabled    = true;
   btn.textContent = "Guardando…";
 
-  const result = await createDocument("matches", {
+  const matchData = {
     tournamentId,
     homeTeamId,
     awayTeamId,
     matchDate,
     matchTime,
     location: location || null,
-    status:     "scheduled",
-    homeScore:  null,
-    awayScore:  null,
-  });
+  };
 
-  btn.disabled    = false;
-  btn.innerHTML   = '<i class="bi bi-floppy me-1"></i>Programar partido';
+  let result;
+  if (editMatchId) {
+    result = await updateDocument("matches", editMatchId, matchData);
+  } else {
+    result = await createDocument("matches", {
+      ...matchData,
+      status:    "scheduled",
+      homeScore: null,
+      awayScore: null,
+    });
+  }
+
+  btn.disabled  = false;
+  btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Programar partido';
 
   if (!result.success) {
     showAlert("Error al guardar el partido: " + result.message, "danger");
     return;
   }
 
-  showAlert("Partido programado correctamente.", "success");
+  showAlert(editMatchId ? "Partido actualizado correctamente." : "Partido programado correctamente.", "success");
+  editMatchId = null;
   modal.hide();
   await loadAll();
 });
+
+document.getElementById("btn-save-result").addEventListener("click", saveMatchResult);
 
 // Reset modal 
 document.getElementById("modal-match").addEventListener("hidden.bs.modal", resetModal);
@@ -313,6 +377,125 @@ document.getElementById("modal-match").addEventListener("hidden.bs.modal", reset
 function resetModal() {
   document.getElementById("match-form").reset();
   clearFieldErrors(["m-tournament", "m-home", "m-away", "m-date", "m-time"]);
+  editMatchId = null;
+  document.getElementById("modal-match-label").innerHTML =
+    '<i class="bi bi-calendar-plus me-2 text-primary"></i>Nuevo partido';
+  document.getElementById("btn-save-match").innerHTML =
+    '<i class="bi bi-floppy me-1"></i>Programar partido';
+}
+
+function openEditModal(matchId) {
+  if (!ensureAdmin()) return;
+
+  const match = allMatches.find((m) => m.id === matchId);
+  if (!match) return;
+
+  editMatchId = matchId;
+  resetModal();
+  editMatchId = matchId;
+
+  document.getElementById("modal-match-label").innerHTML =
+    '<i class="bi bi-pencil me-2 text-primary"></i>Editar partido';
+  document.getElementById("btn-save-match").innerHTML =
+    '<i class="bi bi-floppy me-1"></i>Guardar cambios';
+
+  document.getElementById("m-tournament").value = match.tournamentId ?? "";
+  document.getElementById("m-home").value        = match.homeTeamId   ?? "";
+  document.getElementById("m-away").value        = match.awayTeamId   ?? "";
+  document.getElementById("m-date").value        = match.matchDate    ?? "";
+  document.getElementById("m-time").value        = match.matchTime    ?? "";
+  document.getElementById("m-location").value   = match.location     ?? "";
+
+  modal.show();
+}
+
+async function cancelMatch(matchId) {
+  if (!ensureAdmin()) return;
+
+  if (!confirm("¿Cancelar este partido? Esta acción cambiará su estado a 'Cancelado'.")) return;
+
+  const result = await updateDocument("matches", matchId, { status: "cancelled" });
+
+  if (!result.success) {
+    showAlert("Error al cancelar el partido: " + result.message, "danger");
+    return;
+  }
+
+  showAlert("Partido cancelado correctamente.", "success");
+  await loadAll();
+}
+
+function openResultModal(matchId) {
+  if (!ensureAdmin()) return;
+
+  const match = allMatches.find((m) => m.id === matchId);
+  if (!match) return;
+
+  selectedResultMatchId = matchId;
+  clearFieldErrors(["result-home", "result-away"]);
+
+  const teamMap = {};
+  allTeams.forEach((t) => { teamMap[t.id] = t.name; });
+
+  document.getElementById("result-match-summary").textContent =
+    `${teamMap[match.homeTeamId] ?? "Local"} vs ${teamMap[match.awayTeamId] ?? "Visitante"}`;
+  document.getElementById("result-home").value = match.homeScore ?? "";
+  document.getElementById("result-away").value = match.awayScore ?? "";
+  resultModal.show();
+}
+
+async function saveMatchResult() {
+  if (!ensureAdmin()) return;
+
+  if (!selectedResultMatchId) return;
+
+  const homeScore = document.getElementById("result-home").value;
+  const awayScore = document.getElementById("result-away").value;
+  clearFieldErrors(["result-home", "result-away"]);
+
+  const checks = [
+    { id: "result-home", result: validateNonNegativeInteger(homeScore) },
+    { id: "result-away", result: validateNonNegativeInteger(awayScore) },
+  ];
+
+  let hasError = false;
+  checks.forEach(({ id, result }) => {
+    if (!result.valid) {
+      setFieldError(id, result.message);
+      hasError = true;
+    }
+  });
+
+  if (hasError) return;
+
+  const btn = document.getElementById("btn-save-result");
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  const result = await updateDocument("matches", selectedResultMatchId, {
+    homeScore: Number(homeScore),
+    awayScore: Number(awayScore),
+    status: "played",
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-floppy me-1"></i>Guardar resultado';
+
+  if (!result.success) {
+    showAlert("Error al guardar el resultado: " + result.message, "danger");
+    return;
+  }
+
+  showAlert("Resultado registrado correctamente.", "success");
+  resultModal.hide();
+  selectedResultMatchId = null;
+  await loadAll();
+}
+
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar partidos.", "warning");
+  return false;
 }
 
 // Loader
@@ -344,6 +527,99 @@ function clearFieldErrors(fieldIds) {
     const el = document.getElementById(id);
     if (el) el.classList.remove("is-invalid");
   });
+}
+
+// Tabla de posiciones (HU-44)
+function renderStandings(tournamentId) {
+  const container = document.getElementById("standings-container");
+  if (!container) return;
+
+  if (!tournamentId) {
+    container.innerHTML = `<div class="text-center py-4 text-muted small">Selecciona un torneo para ver la tabla de posiciones.</div>`;
+    return;
+  }
+
+  const tournamentMatches = allMatches.filter(
+    (m) => m.tournamentId === tournamentId && m.status === "played"
+  );
+
+  const teamIds = new Set();
+  tournamentMatches.forEach((m) => { teamIds.add(m.homeTeamId); teamIds.add(m.awayTeamId); });
+
+  if (teamIds.size === 0) {
+    container.innerHTML = `<div class="text-center py-4 text-muted small">No hay partidos jugados en este torneo aún.</div>`;
+    return;
+  }
+
+  const teamMap = {};
+  allTeams.forEach((t) => { teamMap[t.id] = t.name; });
+
+  const stats = {};
+  teamIds.forEach((id) => {
+    stats[id] = { pj: 0, pg: 0, pe: 0, pp: 0, gf: 0, gc: 0, pts: 0 };
+  });
+
+  tournamentMatches.forEach((m) => {
+    const h  = m.homeTeamId;
+    const a  = m.awayTeamId;
+    const hs = Number(m.homeScore);
+    const as_ = Number(m.awayScore);
+    if (!stats[h] || !stats[a]) return;
+
+    stats[h].pj++; stats[a].pj++;
+    stats[h].gf += hs; stats[h].gc += as_;
+    stats[a].gf += as_; stats[a].gc += hs;
+
+    if (hs > as_) {
+      stats[h].pg++; stats[h].pts += 3; stats[a].pp++;
+    } else if (hs < as_) {
+      stats[a].pg++; stats[a].pts += 3; stats[h].pp++;
+    } else {
+      stats[h].pe++; stats[h].pts += 1;
+      stats[a].pe++; stats[a].pts += 1;
+    }
+  });
+
+  const rows = Object.entries(stats)
+    .sort(([, a], [, b]) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      return (b.gf - b.gc) - (a.gf - a.gc);
+    })
+    .map(([id, s], i) => `
+      <tr>
+        <td class="text-muted small">${i + 1}</td>
+        <td class="fw-semibold">${escHtml(teamMap[id] ?? id)}</td>
+        <td class="text-center">${s.pj}</td>
+        <td class="text-center">${s.pg}</td>
+        <td class="text-center">${s.pe}</td>
+        <td class="text-center">${s.pp}</td>
+        <td class="text-center">${s.gf}</td>
+        <td class="text-center">${s.gc}</td>
+        <td class="text-center">${s.gf - s.gc}</td>
+        <td class="text-center fw-bold text-primary">${s.pts}</td>
+      </tr>`)
+    .join("");
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="table table-hover align-middle mb-0 text-sm">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th class="text-center">PJ</th>
+            <th class="text-center">PG</th>
+            <th class="text-center">PE</th>
+            <th class="text-center">PP</th>
+            <th class="text-center">GF</th>
+            <th class="text-center">GC</th>
+            <th class="text-center">DG</th>
+            <th class="text-center">PTS</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // Formatters

@@ -1,4 +1,4 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import {
   createDocument,
   getDocuments,
@@ -11,7 +11,18 @@ import {
 import { showAlert, showLoader, hideLoader, showEmptyState, showConfirmModal } from "./ui.js";
 import { validateRequired, validateMinLength } from "./validators.js";
 
+
+const SPORT_CATEGORIES = {
+  "Fútbol":           ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
+  "Baloncesto":       ["Varonil", "Femenil", "Mixto", "Sub-18", "Sub-21"],
+  "Voleibol":         ["Varonil", "Femenil", "Mixto"],
+  "Béisbol":          ["Varonil", "Sub-18", "Sub-21"],
+  "Softbol":          ["Femenil", "Mixto"],
+  "Fútbol Americano": ["Varonil", "Sub-18", "Sub-21"],
+};
+
 let allTeams = [];
+let isAdmin = false;
 
 const modalCreate = new bootstrap.Modal(document.getElementById("modal-create"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail"));
@@ -19,12 +30,24 @@ const modalEdit   = new bootstrap.Modal(document.getElementById("modal-edit"));
 
 preventBackAccess();
 
-requireAuth().then((user) => {
+
+document.getElementById("create-sport").addEventListener("change", () => {
+  updateCategoryOptions("create-sport", "create-category");
+});
+document.getElementById("edit-sport").addEventListener("change", () => {
+  updateCategoryOptions("edit-sport", "edit-category");
+});
+
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   loadTeams();
   bindEvents();
 });
+
+
 
 async function loadTeams() {
   const container = document.getElementById("table-container");
@@ -53,26 +76,21 @@ function renderTable(teams) {
   const container = document.getElementById("table-container");
 
   if (teams.length === 0) {
-    
     if (allTeams.length === 0) {
       showEmptyState(container, "No hay equipos registrados. ¡Crea el primero!");
-    } 
-    else {
+    } else {
       showEmptyState(container, "No se encontraron equipos con ese criterio.");
     }
-    
     return;
   }
 
   const rows = teams.map((t) => {
-
-    const isActive = t.active !== false;
-    
-    const toggleIcon = isActive ? 'bi-toggle-on' : 'bi-toggle-off';
+    const isActive    = t.active !== false;
+    const toggleIcon  = isActive ? 'bi-toggle-on' : 'bi-toggle-off';
     const toggleColor = isActive ? 'btn-outline-secondary' : 'btn-outline-success';
     const toggleTitle = isActive ? 'Desactivar equipo' : 'Activar equipo';
-    const badgeHtml = isActive 
-      ? '<span class="badge badge-active">Activo</span>' 
+    const badgeHtml   = isActive
+      ? '<span class="badge badge-active">Activo</span>'
       : '<span class="badge badge-danger">Inactivo</span>';
 
     return `
@@ -86,6 +104,7 @@ function renderTable(teams) {
         </div>
       </td>
       <td class="text-muted">${escHtml(t.coach)}</td>
+      <td class="text-muted">${escHtml(t.sport ?? "—")}</td>
       <td><span class="badge badge-upcoming">${escHtml(t.category)}</span></td>
       <td>${badgeHtml}</td>
       <td>
@@ -93,15 +112,17 @@ function renderTable(teams) {
           <button class="btn btn-outline-primary btn-sm" data-action="detail" data-id="${t.id}" title="Ver detalle">
             <i class="bi bi-eye"></i>
           </button>
-          <button class="btn btn-outline-warning btn-sm" data-action="edit" data-id="${t.id}" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
-            <i class="bi ${toggleIcon}"></i>
-          </button>
-          <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${t.id}" title="Eliminar permanentemente">
-            <i class="bi bi-trash"></i>
-          </button>
+          ${isAdmin ? `
+            <button class="btn btn-outline-warning btn-sm" data-action="edit" data-id="${t.id}" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn ${toggleColor} btn-sm" data-action="toggle" data-id="${t.id}" data-state="${isActive}" title="${toggleTitle}">
+              <i class="bi ${toggleIcon}"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${t.id}" title="Eliminar permanentemente">
+              <i class="bi bi-trash"></i>
+            </button>
+          ` : ""}
         </div>
       </td>
     </tr>`;
@@ -114,6 +135,7 @@ function renderTable(teams) {
           <tr>
             <th>Equipo</th>
             <th>Entrenador</th>
+            <th>Deporte</th>
             <th>Categoría</th>
             <th>Estado</th>
             <th>Acciones</th>
@@ -134,8 +156,11 @@ function renderTable(teams) {
   });
 }
 
+
+
 function bindEvents() {
   document.getElementById("btn-new-team").addEventListener("click", () => {
+    if (!ensureAdmin()) return;
     clearCreateForm();
     modalCreate.show();
   });
@@ -144,17 +169,55 @@ function bindEvents() {
   document.getElementById("btn-edit-save").addEventListener("click", saveEditTeam);
 
   document.getElementById("search-team").addEventListener("input", applyFilters);
+  document.getElementById("filter-sport").addEventListener("change", applyFilters);   
   document.getElementById("filter-category").addEventListener("change", applyFilters);
   document.getElementById("filter-status").addEventListener("change", applyFilters);
+
+  
 }
 
+
+
+/**
+ * 
+ * @param {string} sportSelectId  
+ * @param {string} categorySelectId 
+ * @param {string} [selectedCategory] 
+ */
+function updateCategoryOptions(sportSelectId, categorySelectId, selectedCategory = "") {
+  const sport      = document.getElementById(sportSelectId).value;
+  const catSelect  = document.getElementById(categorySelectId);
+  const categories = SPORT_CATEGORIES[sport] ?? [];
+
+  catSelect.innerHTML = "";
+
+  if (!sport) {
+    catSelect.innerHTML = `<option value="">— Selecciona un deporte primero —</option>`;
+    return;
+  }
+
+  catSelect.innerHTML = `<option value="">— Selecciona —</option>`;
+  categories.forEach((cat) => {
+    const opt       = document.createElement("option");
+    opt.value       = cat;
+    opt.textContent = cat;
+    if (cat === selectedCategory) opt.selected = true;
+    catSelect.appendChild(opt);
+  });
+}
+
+
+
 async function saveNewTeam() {
+  if (!ensureAdmin()) return;
+
   const name     = document.getElementById("create-name").value.trim();
   const coach    = document.getElementById("create-coach").value.trim();
+  const sport    = document.getElementById("create-sport").value;
   const category = document.getElementById("create-category").value;
   const logo     = document.getElementById("create-logo").value.trim();
 
-  clearFieldErrors(["create-name", "create-coach", "create-category"]);
+  clearFieldErrors(["create-name", "create-coach", "create-sport", "create-category"]);
 
   let hasError = false;
 
@@ -164,6 +227,9 @@ async function saveNewTeam() {
   const coachCheck = validateMinLength(coach, 3);
   if (!coachCheck.valid) { setFieldError("create-coach", coachCheck.message); hasError = true; }
 
+  const sportCheck = validateRequired(sport);
+  if (!sportCheck.valid) { setFieldError("create-sport", "Selecciona un deporte."); hasError = true; }
+
   const catCheck = validateRequired(category);
   if (!catCheck.valid) { setFieldError("create-category", "Selecciona una categoría."); hasError = true; }
 
@@ -172,7 +238,6 @@ async function saveNewTeam() {
   const btn = document.getElementById("btn-create-save");
   showLoader(btn, "Guardando...");
 
-  // Verificar nombre duplicado
   const dupCheck = await checkDuplicate("teams", "name", name);
   if (dupCheck.isDuplicate) {
     setFieldError("create-name", "Ya existe un equipo con ese nombre.");
@@ -183,6 +248,7 @@ async function saveNewTeam() {
   const result = await createDocument("teams", {
     name,
     coach,
+    sport,
     category,
     logoUrl: logo || null,
   });
@@ -199,13 +265,19 @@ async function saveNewTeam() {
   }
 }
 
+
+
 async function openDetail(id) {
-  // Limpiar campos mientras carga
-  ["detail-name", "detail-coach", "detail-category", "detail-status", "detail-created", "detail-updated"]
+  ["detail-name", "detail-coach", "detail-sport", "detail-category",
+   "detail-status", "detail-created", "detail-updated"]
     .forEach((el) => { document.getElementById(el).textContent = "—"; });
   document.getElementById("detail-logo").style.display = "none";
   document.getElementById("detail-logo-placeholder").style.display = "flex";
   document.getElementById("detail-players-container").innerHTML = `
+    <div class="text-center py-3">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+    </div>`;
+  document.getElementById("detail-matches-container").innerHTML = `
     <div class="text-center py-3">
       <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
     </div>`;
@@ -223,6 +295,7 @@ async function openDetail(id) {
 
   document.getElementById("detail-name").textContent     = t.name;
   document.getElementById("detail-coach").textContent    = t.coach;
+  document.getElementById("detail-sport").textContent    = t.sport ?? "—";
   document.getElementById("detail-category").textContent = t.category;
   document.getElementById("detail-status").innerHTML     = t.active !== false
     ? '<span class="badge badge-active">Activo</span>'
@@ -237,9 +310,10 @@ async function openDetail(id) {
     document.getElementById("detail-logo-placeholder").style.display = "none";
   }
 
-  // Cargar jugadores del equipo
+  
   const playersResult = await getDocuments("players");
   const playersContainer = document.getElementById("detail-players-container");
+  await renderRecentMatches(id);
 
   if (!playersResult.success) {
     playersContainer.innerHTML = `<p class="text-muted small">No se pudieron cargar los jugadores.</p>`;
@@ -272,6 +346,69 @@ async function openDetail(id) {
     </div>`;
 }
 
+async function renderRecentMatches(teamId) {
+  const container = document.getElementById("detail-matches-container");
+  const [matchesResult, teamsResult] = await Promise.all([
+    getDocuments("matches"),
+    getDocuments("teams"),
+  ]);
+
+  if (!matchesResult.success) {
+    container.innerHTML = `<p class="text-muted small">No se pudieron cargar los partidos recientes.</p>`;
+    return;
+  }
+
+  const teamMap = {};
+  if (teamsResult.success) {
+    teamsResult.data.forEach((team) => { teamMap[team.id] = team.name; });
+  }
+
+  const matches = matchesResult.data
+    .filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId)
+    .sort((a, b) => `${b.matchDate || ""} ${b.matchTime || ""}`.localeCompare(`${a.matchDate || ""} ${a.matchTime || ""}`))
+    .slice(0, 5);
+
+  if (matches.length === 0) {
+    showEmptyState(container, "Este equipo todavía no tiene partidos registrados.");
+    return;
+  }
+
+  const statusLabels = {
+    scheduled: { label: "Programado", cls: "badge-upcoming" },
+    played: { label: "Jugado", cls: "badge-active" },
+    cancelled: { label: "Cancelado", cls: "badge-danger" },
+  };
+
+  const rows = matches.map((m) => {
+    const status = statusLabels[m.status] ?? statusLabels.scheduled;
+    const home = escHtml(teamMap[m.homeTeamId] ?? "—");
+    const away = escHtml(teamMap[m.awayTeamId] ?? "—");
+    const score = m.status === "played"
+      ? `<span class="fw-bold">${m.homeScore ?? 0} - ${m.awayScore ?? 0}</span>`
+      : `<span class="text-muted">vs</span>`;
+
+    return `
+      <tr>
+        <td>${home} ${score} ${away}</td>
+        <td class="text-nowrap">${formatDate(m.matchDate)}</td>
+        <td class="text-nowrap">${m.matchTime ?? "—"}</td>
+        <td><span class="badge ${status.cls}">${status.label}</span></td>
+      </tr>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr><th>Partido</th><th>Fecha</th><th>Hora</th><th>Estado</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+
+
 async function openEdit(id) {
   clearEditErrors();
 
@@ -282,19 +419,25 @@ async function openEdit(id) {
   }
 
   const t = result.data;
-  document.getElementById("edit-id").value       = t.id;
-  document.getElementById("edit-name").value     = t.name;
-  document.getElementById("edit-coach").value    = t.coach;
-  document.getElementById("edit-category").value = t.category;
-  document.getElementById("edit-logo").value     = t.logoUrl ?? "";
+  document.getElementById("edit-id").value    = t.id;
+  document.getElementById("edit-name").value  = t.name;
+  document.getElementById("edit-coach").value = t.coach;
+  document.getElementById("edit-logo").value  = t.logoUrl ?? "";
+
+  
+  document.getElementById("edit-sport").value = t.sport ?? "";
+  updateCategoryOptions("edit-sport", "edit-category", t.category);
 
   modalEdit.show();
 }
 
 async function saveEditTeam() {
+  if (!ensureAdmin()) return;
+
   const id       = document.getElementById("edit-id").value;
   const name     = document.getElementById("edit-name").value.trim();
   const coach    = document.getElementById("edit-coach").value.trim();
+  const sport    = document.getElementById("edit-sport").value;
   const category = document.getElementById("edit-category").value;
   const logo     = document.getElementById("edit-logo").value.trim();
 
@@ -308,6 +451,9 @@ async function saveEditTeam() {
   const coachCheck = validateMinLength(coach, 3);
   if (!coachCheck.valid) { setFieldError("edit-coach", coachCheck.message); hasError = true; }
 
+  const sportCheck = validateRequired(sport);
+  if (!sportCheck.valid) { setFieldError("edit-sport", "Selecciona un deporte."); hasError = true; }
+
   const catCheck = validateRequired(category);
   if (!catCheck.valid) { setFieldError("edit-category", "Selecciona una categoría."); hasError = true; }
 
@@ -316,7 +462,6 @@ async function saveEditTeam() {
   const btn = document.getElementById("btn-edit-save");
   showLoader(btn, "Guardando...");
 
-  // Verificar duplicado excluyendo el propio equipo
   const dupCheck = await checkDuplicate("teams", "name", name, id);
   if (dupCheck.isDuplicate) {
     setFieldError("edit-name", "Ya existe otro equipo con ese nombre.");
@@ -327,6 +472,7 @@ async function saveEditTeam() {
   const result = await updateDocument("teams", id, {
     name,
     coach,
+    sport,
     category,
     logoUrl: logo || null,
   });
@@ -342,16 +488,17 @@ async function saveEditTeam() {
   }
 }
 
+
+
 function toggleTeamStatus(id, currentState) {
+  if (!ensureAdmin()) return;
+
   const accion = currentState ? "desactivar" : "activar";
-  
   showConfirmModal(`¿Estás seguro de que deseas ${accion} este equipo?`, async () => {
-    
     const result = await toggleActive("teams", id, currentState);
-    
     if (result.success) {
       showAlert(`Equipo ${accion}do correctamente.`, "success");
-      loadTeams(); 
+      loadTeams();
     } else {
       showAlert(`Error al ${accion} el equipo: ` + result.message, "danger");
     }
@@ -359,38 +506,47 @@ function toggleTeamStatus(id, currentState) {
 }
 
 function deleteTeam(id) {
+  if (!ensureAdmin()) return;
+
   showConfirmModal(`ADVERTENCIA: Esta acción es irreversible. ¿Deseas eliminar este equipo de la base de datos?`, async () => {
-    
     const result = await deleteDocument("teams", id);
-    
     if (result.success) {
       showAlert("Equipo eliminado permanentemente.", "success");
-      loadTeams(); 
+      loadTeams();
     } else {
       showAlert("Error al eliminar el equipo: " + result.message, "danger");
     }
   });
 }
 
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar equipos.", "warning");
+  return false;
+}
+
+
+
 function applyFilters() {
   const searchTerm = document.getElementById("search-team").value.toLowerCase();
+  const sport      = document.getElementById("filter-sport").value;        // HU-27
   const category   = document.getElementById("filter-category").value;
   const status     = document.getElementById("filter-status").value;
 
   const filteredTeams = allTeams.filter((t) => {
-    const matchName = t.name.toLowerCase().includes(searchTerm);
-    
+    const matchName     = t.name.toLowerCase().includes(searchTerm);
+    const matchSport    = sport === "" || t.sport === sport;               // HU-27
     const matchCategory = category === "" || t.category === category;
-    
-    let matchStatus = true;
+    let matchStatus     = true;
     if (status === "active")   matchStatus = t.active !== false;
     if (status === "inactive") matchStatus = t.active === false;
-
-    return matchName && matchCategory && matchStatus;
+    return matchName && matchSport && matchCategory && matchStatus;
   });
 
   renderTable(filteredTeams);
 }
+
+
 
 function setFieldError(fieldId, message) {
   const el = document.getElementById(fieldId);
@@ -412,13 +568,16 @@ function clearCreateForm() {
   ["create-name", "create-coach", "create-logo"].forEach((id) => {
     document.getElementById(id).value = "";
   });
-  document.getElementById("create-category").value = "";
-  clearFieldErrors(["create-name", "create-coach", "create-category"]);
+  document.getElementById("create-sport").value    = "";
+  document.getElementById("create-category").innerHTML = `<option value="">— Selecciona un deporte primero —</option>`;
+  clearFieldErrors(["create-name", "create-coach", "create-sport", "create-category"]);
 }
 
 function clearEditErrors() {
-  clearFieldErrors(["edit-name", "edit-coach", "edit-category"]);
+  clearFieldErrors(["edit-name", "edit-coach", "edit-sport", "edit-category"]);
 }
+
+
 
 function escHtml(str) {
   if (!str) return "";

@@ -1,23 +1,28 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { applyAdminVisibility, logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import { createDocument, getDocuments, updateDocument, deleteDocument, checkDuplicate } from "./firestore.js";
-import { validateRequired, validateDate } from "./validators.js";
+import { validateRequired, validateDate, validateDateChronology, validateReasonableYear } from "./validators.js";
 import { showAlert, showEmptyState, showConfirmModal } from "./ui.js";
 
 let allTournaments = [];
 let editingId      = null;
+let isAdmin = false;
 
 const modal       = new bootstrap.Modal(document.getElementById("modal-tournament"));
 const modalDetail = new bootstrap.Modal(document.getElementById("modal-detail-tournament"));
 
 preventBackAccess();
-requireAuth().then((user) => {
+requireAuth().then(async (user) => {
+  isAdmin = await userIsAdmin(user);
+  applyAdminVisibility(isAdmin);
   showUserInNavbar(user);
   document.getElementById("btn-logout").addEventListener("click", logout);
   loadTournaments();
 });
 
-// Cargar torneos
+
 document.getElementById("btn-new").addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+
   resetModal();
   modal.show();
 });
@@ -33,7 +38,7 @@ async function loadTournaments() {
   renderTournaments(allTournaments);
 }
 
-// Métricas 
+
 function renderMetrics(tournaments) {
   const row = document.getElementById("metrics-row");
   if (!row) return;
@@ -79,7 +84,7 @@ function renderMetrics(tournaments) {
   `;
 }
 
-// Status labels
+
 const STATUS_LABELS = {
   upcoming:  { label: "Próximo",    cls: "badge-upcoming" },
   active:    { label: "En curso",   cls: "badge-active"   },
@@ -93,7 +98,7 @@ function formatDate(dateStr) {
   return `${d}/${m}/${y}`;
 }
 
-// Render tabla 
+
 function renderTournaments(tournaments) {
   const tbody = document.getElementById("tournaments-tbody");
   const empty = document.getElementById("tournaments-empty");
@@ -119,12 +124,14 @@ function renderTournaments(tournaments) {
           <button class="btn btn-sm btn-outline-secondary" data-view="${t.id}" title="Ver detalle">
             <i class="bi bi-eye"></i>
           </button>
-          <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-danger" data-del="${t.id}" title="Eliminar">
-            <i class="bi bi-trash"></i>
-          </button>
+          ${isAdmin ? `
+            <button class="btn btn-sm btn-outline-primary" data-edit="${t.id}" title="Editar">
+              <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" data-del="${t.id}" title="Eliminar">
+              <i class="bi bi-trash"></i>
+            </button>
+          ` : ""}
         </div>
       </td>
     </tr>`;
@@ -132,7 +139,7 @@ function renderTournaments(tournaments) {
 
 }
 
-// Delegación persistente
+
 document.getElementById("tournaments-tbody").addEventListener("click", (e) => {
   const viewBtn = e.target.closest("[data-view]");
   const editBtn = e.target.closest("[data-edit]");
@@ -146,8 +153,10 @@ document.getElementById("tournaments-tbody").addEventListener("click", (e) => {
   if (delBtn) deleteTournament(delBtn.dataset.del);
 });
 
-// Eliminar torneo
+
 function deleteTournament(id) {
+  if (!ensureAdmin()) return;
+
   const t = allTournaments.find((t) => t.id === id);
   const name = t ? escHtml(t.name) : "este torneo";
 
@@ -165,7 +174,7 @@ function deleteTournament(id) {
   );
 }
 
-// Modal de detalle
+
 async function openDetailModal(id) {
   const t = allTournaments.find((t) => t.id === id);
   if (!t) return;
@@ -173,7 +182,7 @@ async function openDetailModal(id) {
   const body = document.getElementById("modal-detail-body");
   const st   = STATUS_LABELS[t.status] ?? STATUS_LABELS.upcoming;
 
-  // Render info básica
+  
   body.innerHTML = `
     <div class="row g-3 mb-4">
       <div class="col-12">
@@ -228,7 +237,7 @@ async function openDetailModal(id) {
 
   modalDetail.show();
 
-  // Cargar partidos de este torneo
+  
   const matchesResult = await getDocuments("matches");
   const container = document.getElementById("detail-matches-container");
   if (!container) return;
@@ -238,7 +247,7 @@ async function openDetailModal(id) {
     return;
   }
 
-  // Cargar equipos para resolver nombres
+  
   const teamsResult = await getDocuments("teams");
   const teamsMap = {};
   if (teamsResult.success) {
@@ -297,8 +306,10 @@ async function openDetailModal(id) {
     </div>`;
 }
 
-// Editar torneo (incluye estado)
+
 function openEditModal(tournament) {
+  if (!ensureAdmin()) return;
+
   editingId = tournament.id;
   document.getElementById("modal-tournament-title").textContent = "Editar torneo";
   document.getElementById("t-name").value        = tournament.name;
@@ -307,7 +318,7 @@ function openEditModal(tournament) {
   document.getElementById("t-end").value         = tournament.endDate;
   document.getElementById("t-description").value = tournament.description ?? "";
 
-  // Mostrar y preseleccionar estado
+  
   const statusWrap = document.getElementById("t-status-wrap");
   statusWrap.classList.remove("d-none");
   document.getElementById("t-status").value = tournament.status ?? "upcoming";
@@ -315,8 +326,10 @@ function openEditModal(tournament) {
   modal.show();
 }
 
-// Guardar (crear o editar)
+
 document.getElementById("btn-save").addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+
   const name        = document.getElementById("t-name").value.trim();
   const sport       = document.getElementById("t-sport").value;
   const startDate   = document.getElementById("t-start").value;
@@ -331,24 +344,28 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     { id: "t-end",   result: validateDate(endDate) },
   ];
 
+  if (checks[2].result.valid) checks[2].result = validateReasonableYear(startDate);
+  if (checks[3].result.valid) checks[3].result = validateReasonableYear(endDate);
+
   let isValid = true;
   checks.forEach(({ id, result }) => {
     document.getElementById(id).classList.toggle("is-invalid", !result.valid);
     if (!result.valid) {
       isValid = false;
-      // Actualizar texto del feedback si el elemento tiene id dinámico (ej: t-start-feedback)
+     
       const feedbackEl = document.getElementById(id + "-feedback");
       if (feedbackEl && result.message) feedbackEl.textContent = result.message;
     }
   });
 
-  // Validar que fecha fin > fecha inicio
-  if (isValid && new Date(endDate) <= new Date(startDate)) {
-    const endEl = document.getElementById("t-end");
-    endEl.classList.add("is-invalid");
-    document.getElementById("t-end-feedback").textContent =
-      "La fecha fin debe ser posterior a la fecha inicio.";
-    isValid = false;
+  
+  if (isValid) {
+    const chronologyCheck = validateDateChronology(startDate, endDate);
+    if (!chronologyCheck.valid) {
+      document.getElementById("t-end").classList.add("is-invalid");
+      document.getElementById("t-end-feedback").textContent = chronologyCheck.message;
+      isValid = false;
+    }
   }
 
   if (!isValid) return;
@@ -369,6 +386,23 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     return;
   }
 
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  let finalStatus = status;
+
+  if (!editingId) {
+    if (endDate < todayStr) {
+      finalStatus = "finished"; 
+    } else if (startDate <= todayStr && endDate >= todayStr) {
+      finalStatus = "active";   
+    } else {
+      finalStatus = "upcoming"; 
+    }
+  }
+
   const data = {
     name,
     nameLower: name.toLowerCase(),
@@ -376,12 +410,12 @@ document.getElementById("btn-save").addEventListener("click", async () => {
     startDate,
     endDate,
     description,
-    status,
+    status: finalStatus,
   };
 
   const result = editingId
     ? await updateDocument("tournaments", editingId, data)
-    : await createDocument("tournaments", { ...data, status: "upcoming" });
+    : await createDocument("tournaments", data);
 
   if (!result.success) {
     showAlert("Error al guardar el torneo.", "danger");
@@ -398,7 +432,7 @@ document.getElementById("btn-save").addEventListener("click", async () => {
   btn.disabled = false;
 });
 
-// Reset modal
+
 document.getElementById("modal-tournament").addEventListener("hidden.bs.modal", resetModal);
 
 function resetModal() {
@@ -407,14 +441,20 @@ function resetModal() {
   document.getElementById("modal-tournament-title").textContent = "Nuevo torneo";
   document.getElementById("t-start-feedback").textContent = "Ingresa la fecha de inicio.";
   document.getElementById("t-end-feedback").textContent   = "Ingresa la fecha de fin.";
-  // Ocultar campo estado en modo crear
+  
   document.getElementById("t-status-wrap").classList.add("d-none");
   document.getElementById("t-status").value = "upcoming";
   document.querySelectorAll("#tournament-form .is-invalid")
     .forEach((el) => el.classList.remove("is-invalid"));
 }
 
-// Utilidad
+function ensureAdmin() {
+  if (isAdmin) return true;
+  showAlert("Solo un usuario administrador puede modificar torneos.", "warning");
+  return false;
+}
+
+
 function escHtml(str) {
   if (!str) return "";
   return String(str)

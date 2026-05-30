@@ -43,7 +43,7 @@
 
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0">Jugadores</h2>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-player">
+        <button class="btn btn-primary" id="btn-new-player" data-bs-toggle="modal" data-bs-target="#modal-player" data-admin-only>
           <i class="bi bi-plus-lg me-1"></i>Nuevo jugador
         </button>
       </div>
@@ -51,11 +51,18 @@
       <div id="alert-container" class="mb-3"></div>
 
       <!-- Filtro -->
-      <div class="mb-3 col-12 col-md-4">
-        <select class="form-select" id="filter-team">
-          <option value="">Todos los equipos</option>
-        </select>
-      </div>
+      <div class="row mb-3">
+        <div class="col-12 col-md-4 mb-2 mb-md-0">
+          <select class="form-select" id="filter-team">
+            <option value="">Todos los equipos</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-8">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="search-player" placeholder="Buscar jugador por nombre..." autocomplete="off" />
+          </div>
+        </div>
 
       <!-- Tabla -->
       <div class="card border-0 shadow-sm">
@@ -65,10 +72,12 @@
               <tr>
                 <th>#</th>
                 <th>Nombre</th>
+                <th>Tipo</th>
                 <th>Matrícula</th>
                 <th>Posición</th>
                 <th>Camiseta</th>
                 <th>Equipo</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="players-tbody"></tbody>
@@ -80,7 +89,7 @@
     </div>
   </main>
 
-  <!-- Modal -->
+  <!-- Modal: Nuevo jugador -->
   <div class="modal fade" id="modal-player" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -105,21 +114,30 @@
               <div class="invalid-feedback">Ingresa el nombre completo.</div>
             </div>
 
+            <!--  Tipo de participante -->
             <div class="mb-3">
+              <label class="form-label fw-semibold">Tipo de participante <span class="text-danger">*</span></label>
+              <select class="form-select" id="participantType" required>
+                <option value="">Selecciona</option>
+                <option value="Estudiante">Estudiante</option>
+                <option value="Externo">Externo</option>
+              </select>
+              <div class="invalid-feedback">Selecciona el tipo de participante.</div>
+            </div>
+
+            <!-- Matrícula visible solo si es Estudiante -->
+            <div class="mb-3" id="studentNumber-wrapper">
               <label class="form-label fw-semibold">Matrícula <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="studentNumber" required />
+              <input type="text" class="form-control" id="studentNumber" />
               <div class="invalid-feedback">Ingresa la matrícula.</div>
             </div>
 
             <div class="row g-3">
               <div class="col-6">
                 <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
-                <select class="form-select" id="position" required>
-                  <option value="">Selecciona</option>
-                  <option>Portero</option>
-                  <option>Defensa</option>
-                  <option>Mediocampista</option>
-                  <option>Delantero</option>
+                <!-- Se habilita y repopula al seleccionar equipo -->
+                <select class="form-select" id="position" required disabled>
+                  <option value="">— Selecciona un equipo primero —</option>
                 </select>
                 <div class="invalid-feedback">Selecciona una posición.</div>
               </div>
@@ -135,6 +153,154 @@
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button class="btn btn-primary" id="btn-save">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal detalle del jugador -->
+  <div class="modal fade" id="modal-detail" tabindex="-1" aria-labelledby="modal-detail-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-detail-label">
+            <i class="bi bi-person-fill me-2 text-primary"></i>Ficha del jugador
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+              style="width:56px;height:56px;background:rgba(124,58,237,.15);border:2px solid var(--border);">
+              <i class="bi bi-person-fill text-primary fs-4"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold mb-0" id="detail-name">—</h5>
+              <span class="text-muted small" id="detail-team">—</span>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Deporte</div>
+                <div class="fw-semibold" id="detail-sport">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Tipo</div>
+                <div class="fw-semibold" id="detail-type">—</div>
+              </div>
+            </div>
+            <!-- Matrícula solo si es Estudiante -->
+            <div class="col-6" id="detail-matricula-row">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Matrícula</div>
+                <div class="fw-semibold" id="detail-matricula">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Posición</div>
+                <div class="fw-semibold" id="detail-position">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Camiseta</div>
+                <div class="fw-semibold" id="detail-shirt">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Estado</div>
+                <div id="detail-status">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded" style="background:rgba(255,255,255,.03);border:1px solid var(--border);">
+                <div class="text-muted small mb-1">Fecha de registro</div>
+                <div class="fw-semibold" id="detail-created">—</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Jugador -->
+  <div class="modal fade" id="modal-edit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-pencil-fill me-2 text-warning"></i>Editar jugador
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-id" />
+          <form id="edit-player-form" novalidate>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Equipo <span class="text-danger">*</span></label>
+              <select class="form-select" id="edit-teamId" required>
+                <option value="">Selecciona un equipo</option>
+              </select>
+              <div class="invalid-feedback" id="err-edit-teamId">Selecciona un equipo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre completo <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit-fullName" required />
+              <div class="invalid-feedback" id="err-edit-fullName">Ingresa el nombre completo.</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Tipo de participante <span class="text-danger">*</span></label>
+              <select class="form-select" id="edit-participantType" required>
+                <option value="">Selecciona</option>
+                <option value="Estudiante">Estudiante</option>
+                <option value="Externo">Externo</option>
+              </select>
+              <div class="invalid-feedback" id="err-edit-participantType">Selecciona el tipo de participante.</div>
+            </div>
+
+            <div class="mb-3" id="edit-studentNumber-wrapper">
+              <label class="form-label fw-semibold">Matrícula <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit-studentNumber" />
+              <div class="invalid-feedback" id="err-edit-studentNumber">Ingresa la matrícula.</div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-6">
+                <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
+                <select class="form-select" id="edit-position" required>
+                  <option value="">— Selecciona un equipo primero —</option>
+                </select>
+                <div class="invalid-feedback" id="err-edit-position">Selecciona una posición.</div>
+              </div>
+              <div class="col-6">
+                <label class="form-label fw-semibold">Número de camiseta <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="edit-shirtNumber" min="1" max="99" required />
+                <div class="invalid-feedback" id="err-edit-shirtNumber">Número entre 1 y 99.</div>
+              </div>
+            </div>
+
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-warning btn-sm text-dark" id="btn-edit-save">
+            <i class="bi bi-floppy me-1"></i>Guardar cambios
+          </button>
         </div>
       </div>
     </div>

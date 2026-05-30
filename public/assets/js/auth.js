@@ -1,4 +1,4 @@
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
@@ -6,7 +6,17 @@ import {
   signOut,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { createDocument } from "./firestore.js";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  where
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 export async function logout() {
   await signOut(auth);
@@ -45,15 +55,56 @@ export async function registerWithEmail({ name, email, password }) {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
 
   await updateProfile(credential.user, { displayName: name });
-  await createDocument("users", {
+  await setDoc(doc(db, "users", credential.user.uid), {
     uid: credential.user.uid,
     name,
     email,
     role: "admin",
     active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
   return credential.user;
+}
+
+export async function getCurrentUserProfile(user = auth.currentUser) {
+  if (!user) return null;
+
+  const directSnapshot = await getDoc(doc(db, "users", user.uid));
+  if (directSnapshot.exists()) {
+    return { id: directSnapshot.id, ...directSnapshot.data() };
+  }
+
+  const fallbackQuery = query(collection(db, "users"), where("uid", "==", user.uid), limit(1));
+  const fallbackSnapshot = await getDocs(fallbackQuery);
+  if (fallbackSnapshot.empty) return null;
+
+  const userDoc = fallbackSnapshot.docs[0];
+  const profile = { id: userDoc.id, ...userDoc.data() };
+
+  try {
+    await setDoc(doc(db, "users", user.uid), {
+      ...userDoc.data(),
+      uid: user.uid,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.warn("No se pudo migrar el perfil de usuario a users/{uid}.", error);
+  }
+
+  return profile;
+}
+
+export async function userIsAdmin(user = auth.currentUser) {
+  const profile = await getCurrentUserProfile(user);
+  return profile?.role === "admin" && profile?.active !== false;
+}
+
+export function applyAdminVisibility(isAdmin) {
+  document.querySelectorAll("[data-admin-only]").forEach((el) => {
+    el.classList.toggle("d-none", !isAdmin);
+  });
 }
 
 export function redirectIfAuthenticated() {
