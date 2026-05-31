@@ -50,15 +50,15 @@ function renderMetrics(tournaments) {
 
   row.innerHTML = `
     <div class="col-6 col-md-3">
-      <div class="metric-card">
+      <div class="metric-card mc-gold">
         <div class="d-flex justify-content-between align-items-start">
-          <div><div class="metric-value">${total}</div><div class="metric-label">Total torneos</div></div>
+          <div><div class="metric-value text-gold">${total}</div><div class="metric-label">Total torneos</div></div>
           <i class="bi bi-trophy-fill metric-icon"></i>
         </div>
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="metric-card">
+      <div class="metric-card mc-info">
         <div class="d-flex justify-content-between align-items-start">
           <div><div class="metric-value">${upcoming}</div><div class="metric-label">Próximos</div></div>
           <i class="bi bi-calendar-event metric-icon"></i>

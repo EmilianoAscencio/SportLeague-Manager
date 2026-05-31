@@ -4,7 +4,7 @@ import { showAlert } from "./ui.js";
 import { auth } from "./firebase.js";
 import { updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// ── Init ────────────────────────────────────────────────────────────────────
+// Init
 preventBackAccess();
 
 requireAuth().then(async (user) => {
@@ -25,7 +25,7 @@ requireAuth().then(async (user) => {
   setupEditForm(user);
 });
 
-// ── Datos personales del usuario ────────────────────────────────────────────
+// Datos personales del usuario
 function renderProfile(user) {
   const name    = user.displayName || "Sin nombre";
   const email   = user.email || "—";
@@ -38,14 +38,13 @@ function renderProfile(user) {
   document.getElementById("detail-email").textContent   = email;
   document.getElementById("input-display-name").value   = user.displayName || "";
 
-  // Miembro desde (fecha de creación de la cuenta)
   const since = user.metadata?.creationTime;
   if (since) {
     document.getElementById("detail-since").textContent = fmtDate(new Date(since));
   }
 }
 
-// ── Información de la sesión actual ────────────────────────────────────────
+// Información de la sesión actual
 function renderSessionInfo(user) {
   // Último acceso
   const lastLogin = user.metadata?.lastSignInTime;
@@ -61,7 +60,7 @@ function renderSessionInfo(user) {
 
 }
 
-// ── Rol del usuario ─────────────────────────────────────────────────────────
+// Rol del usuario 
 async function loadUserRole(uid) {
   const result = await getDocuments("users");
   if (!result.success) return;
@@ -74,7 +73,6 @@ async function loadUserRole(uid) {
   document.getElementById("profile-role-badge").textContent = label;
 }
 
-// ── Actividad propia del usuario (registros creados por él) ─────────────────
 async function loadUserActivity(uid) {
   const COLS = [
     { col: "teams",       label: "Equipos",    icon: "bi-shield-fill",    color: "var(--primary)" },
@@ -89,13 +87,11 @@ async function loadUserActivity(uid) {
   container.innerHTML = COLS.map((c, i) => {
     const raw = results[i];
 
-    // Filtrar solo los creados por este usuario
     const mine = raw.success
       ? raw.data.filter((d) => d.createdBy === uid)
       : [];
     const count = raw.success ? mine.length : "—";
 
-    // ¿Cuántos están activos?
     const active = raw.success
       ? mine.filter((d) => d.active !== false).length
       : null;
@@ -116,7 +112,6 @@ async function loadUserActivity(uid) {
   }).join("");
 }
 
-// ── Editar nombre ───────────────────────────────────────────────────────────
 function setupEditForm(user) {
   const input = document.getElementById("input-display-name");
   const btn   = document.getElementById("btn-save-name");
@@ -137,7 +132,6 @@ function setupEditForm(user) {
     try {
       await updateProfile(auth.currentUser, { displayName: newName });
 
-      // Reflejar cambios en la UI
       const navUser = document.getElementById("navbar-user");
       if (navUser) navUser.textContent = newName;
 
@@ -156,8 +150,6 @@ function setupEditForm(user) {
 
   input.addEventListener("input", () => input.classList.remove("is-invalid"));
 }
-
-// ── Utilidades de fecha ─────────────────────────────────────────────────────
 function fmtDate(d) {
   return d.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
 }

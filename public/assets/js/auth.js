@@ -28,10 +28,15 @@ export function preventBackAccess() {
   window.addEventListener("popstate", () => history.pushState(null, "", location.href));
 }
 
-// Muestra el nombre o correo del usuario autenticado en el navbar
+// Muestra el nombre/correo del usuario en el sidebar y su inicial en el avatar
 export function showUserInNavbar(user) {
-  const el = document.getElementById("navbar-user");
-  if (el) el.textContent = user.displayName || user.email;
+  const name = user.displayName || user.email || "?";
+
+  const nameEl = document.getElementById("navbar-user");
+  if (nameEl) nameEl.textContent = name;
+
+  const avatarEl = document.getElementById("sidebar-avatar");
+  if (avatarEl) avatarEl.textContent = name[0].toUpperCase();
 }
 
 export function getAuthErrorMessage(error) {

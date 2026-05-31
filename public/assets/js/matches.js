@@ -118,7 +118,7 @@ function renderMetrics() {
       </div>
     </div>
     <div class="col-6 col-md-3">
-      <div class="metric-card">
+      <div class="metric-card mc-info">
         <div class="d-flex justify-content-between align-items-start">
           <div><div class="metric-value">${scheduled}</div><div class="metric-label">Programados</div></div>
           <i class="bi bi-clock metric-icon"></i>
@@ -529,7 +529,7 @@ function clearFieldErrors(fieldIds) {
   });
 }
 
-// Tabla de posiciones (HU-44)
+// Tabla de posiciones
 function renderStandings(tournamentId) {
   const container = document.getElementById("standings-container");
   if (!container) return;
