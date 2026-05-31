@@ -1,4 +1,4 @@
-/* VARIABLES — oscuro (default) y claro (override) */
+/* VARIABLES — oscuro y claro */
 :root {
   --bg:           #0A0A0F;
   --bg-card:      #171720;
@@ -48,7 +48,6 @@ body {
   color: var(--text);
 }
 
-/* Fuerza el color muted a usar la variable del tema */
 .text-muted { color: var(--muted) !important; }
 
 /* ── Auth ───────────────────────────────────────────────────────────────────── */
@@ -138,6 +137,11 @@ body {
   color: var(--text);
   box-shadow: 0 12px 32px rgba(0, 0, 0, .22);
 }
+.card-header {
+  background: var(--bg-card) !important;
+  border-bottom-color: var(--border) !important;
+  color: var(--text);
+}
 
 /* ── Tabla ──────────────────────────────────────────────────────────────────── */
 .table {
@@ -166,6 +170,9 @@ body {
 .btn-secondary:hover       { background:var(--bg-btn-sec-h); border-color:var(--bg-btn-sec-h); color:var(--text); }
 
 /* ── Formularios ────────────────────────────────────────────────────────────── */
+.input-group-text {
+  background: var(--bg); border-color: var(--border); color: var(--muted);
+}
 .form-control, .form-select {
   background:var(--bg); border-color:var(--border); color:var(--text); border-radius:8px;
 }
@@ -212,21 +219,21 @@ body {
 
 /* ── Metric cards ───────────────────────────────────────────────────────────── */
 .metric-card {
-  background:#181822; border:1px solid #303044; border-radius:12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius:12px;
   padding:18px 20px; position:relative; overflow:hidden;
-  box-shadow: 0 12px 30px rgba(0,0,0,.24);
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
 }
 .metric-card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:2px;
   background:linear-gradient(90deg, var(--primary), transparent);
 }
 .metric-card.mc-success::before { background:linear-gradient(90deg, var(--success), transparent); }
-.metric-card.mc-muted::before   { background:linear-gradient(90deg, #94A3B8, transparent); }
-.metric-card .text-primary      { color:#A78BFA !important; }
+.metric-card.mc-muted::before   { background:linear-gradient(90deg, var(--muted), transparent); }
+.metric-card .text-primary      { color:var(--primary) !important; }
 .metric-card .text-light        { color:var(--text) !important; }
 .metric-value { font-size:2rem; font-weight:700; line-height:1; color:var(--text); }
-.metric-label { font-size:.73rem; color:#CBD5E1; text-transform:uppercase; letter-spacing:.6px; margin-top:4px; font-weight:600; }
-.metric-icon  { font-size:1.6rem; opacity:.32; color:#CBD5E1; }
+.metric-label { font-size:.73rem; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-top:4px; font-weight:600; }
+.metric-icon  { font-size:1.6rem; opacity:.32; color:var(--muted); }
 
 /* ── Página de perfil ───────────────────────────────────────────────────────── */
 .avatar-circle {

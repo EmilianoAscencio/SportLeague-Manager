@@ -59,10 +59,11 @@
         </div>
         <div class="col-12 col-md-8">
           <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="text" class="form-control" id="search-player" placeholder="Buscar jugador por nombre..." autocomplete="off" />
           </div>
         </div>
+      </div>
 
       <!-- Tabla -->
       <div class="card border-0 shadow-sm">
@@ -106,6 +107,10 @@
                 <option value="">Selecciona un equipo</option>
               </select>
               <div class="invalid-feedback">Selecciona un equipo.</div>
+              <div id="team-sport-badge" class="mt-1" style="display:none;">
+                <small class="text-muted">Deporte: </small>
+                <span class="badge badge-upcoming" id="team-sport-label"></span>
+              </div>
             </div>
 
             <div class="mb-3">
@@ -135,9 +140,8 @@
             <div class="row g-3">
               <div class="col-6">
                 <label class="form-label fw-semibold">Posición <span class="text-danger">*</span></label>
-                <!-- Se habilita y repopula al seleccionar equipo -->
-                <select class="form-select" id="position" required disabled>
-                  <option value="">— Selecciona un equipo primero —</option>
+                <select class="form-select" id="position" required>
+                  <option value="">Selecciona</option>
                 </select>
                 <div class="invalid-feedback">Selecciona una posición.</div>
               </div>

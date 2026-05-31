@@ -593,3 +593,10 @@ function formatTimestamp(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   return isNaN(d) ? "—" : d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return "—";
+  const [y, m, d] = dateStr.split("-");
+  const months = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  return `${d} ${months[Number(m) - 1]} ${y}`;
+}

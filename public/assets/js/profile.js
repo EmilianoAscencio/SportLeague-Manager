@@ -1,4 +1,4 @@
-import { logout, preventBackAccess, requireAuth, showUserInNavbar } from "./auth.js";
+import { logout, preventBackAccess, requireAuth, showUserInNavbar, userIsAdmin } from "./auth.js";
 import { getDocuments } from "./firestore.js";
 import { showAlert } from "./ui.js";
 import { auth } from "./firebase.js";
@@ -14,10 +14,13 @@ requireAuth().then(async (user) => {
   renderProfile(user);
   renderSessionInfo(user);
 
-  await Promise.all([
-    loadUserRole(user.uid),
-    loadUserActivity(user.uid),
-  ]);
+  const isAdmin = await userIsAdmin(user);
+  await loadUserRole(user.uid);
+
+  if (isAdmin) {
+    document.getElementById("section-activity").style.display = "";
+    await loadUserActivity(user.uid);
+  }
 
   setupEditForm(user);
 });
@@ -33,7 +36,6 @@ function renderProfile(user) {
   document.getElementById("profile-email").textContent  = email;
   document.getElementById("detail-name").textContent    = name;
   document.getElementById("detail-email").textContent   = email;
-  document.getElementById("detail-uid").textContent     = user.uid;
   document.getElementById("input-display-name").value   = user.displayName || "";
 
   // Miembro desde (fecha de creación de la cuenta)
@@ -57,28 +59,6 @@ function renderSessionInfo(user) {
     ? fmtDateTime(new Date(created))
     : "—";
 
-  // Email verificado
-  const verifiedEl = document.getElementById("session-verified");
-  if (user.emailVerified) {
-    verifiedEl.innerHTML = `<span class="badge badge-active">
-      <i class="bi bi-check-circle-fill me-1"></i>Verificado
-    </span>`;
-  } else {
-    verifiedEl.innerHTML = `<span class="badge badge-danger">
-      <i class="bi bi-x-circle-fill me-1"></i>No verificado
-    </span>`;
-  }
-
-  // Método / proveedor de autenticación
-  const PROVIDERS = {
-    "password":   "Correo y contraseña",
-    "google.com": "Google",
-    "github.com": "GitHub",
-    "facebook.com": "Facebook",
-  };
-  const providerId = user.providerData?.[0]?.providerId ?? "password";
-  document.getElementById("session-provider").textContent =
-    PROVIDERS[providerId] ?? providerId;
 }
 
 // ── Rol del usuario ─────────────────────────────────────────────────────────

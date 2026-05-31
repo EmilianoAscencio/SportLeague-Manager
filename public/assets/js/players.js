@@ -87,16 +87,25 @@ document.getElementById("filter-team").addEventListener("change", applyFilters);
 document.getElementById("search-player").addEventListener("input", applyFilters);
 
 function bindFormEvents() {
-  
   document.getElementById("teamId").addEventListener("change", (e) => {
     const selectedId = e.target.value;
+    const badge = document.getElementById("team-sport-badge");
+    const label = document.getElementById("team-sport-label");
+
     if (!selectedId) {
-     
+      badge.style.display = "none";
       resetPositionSelect();
       return;
     }
+
     const team = allTeams.find((t) => t.id === selectedId);
-    
+    if (team?.sport) {
+      label.textContent = team.sport;
+      badge.style.display = "";
+    } else {
+      badge.style.display = "none";
+    }
+
     updatePositionOptions(team?.sport ?? null);
   });
 
@@ -151,7 +160,7 @@ function updateEditPositionOptions(sport) {
 function resetPositionSelect() {
   const posSelect = document.getElementById("position");
   posSelect.innerHTML = `<option value="">— Selecciona un equipo primero —</option>`;
-  posSelect.disabled  = true;
+  posSelect.disabled = false;
 }
 
 /**
@@ -501,6 +510,7 @@ function resetForm() {
   document.getElementById("player-form").reset();
   document.querySelectorAll(".is-invalid").forEach((el) => el.classList.remove("is-invalid"));
   document.getElementById("studentNumber-wrapper").style.display = "";
+  document.getElementById("team-sport-badge").style.display = "none";
   resetPositionSelect();
 }
 
