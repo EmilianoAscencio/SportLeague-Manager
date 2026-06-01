@@ -437,19 +437,15 @@ document.getElementById("btn-edit-save").addEventListener("click", async () => {
 async function togglePlayerStatus(id) {
   if (!ensureAdmin()) return;
 
-  // 1. Buscamos al jugador
   const p = allPlayers.find((pl) => pl.id === id);
   if (!p) return;
 
-  // 2. Determinamos el nuevo estado y los textos
   const isCurrentlyActive = p.active !== false;
   const newStatus = !isCurrentlyActive;
   const actionText = isCurrentlyActive ? "desactivar" : "activar";
 
-  // 3. Definimos el mensaje
   const mensaje = `¿Estás seguro de que deseas ${actionText} a <strong>${p.fullName}</strong>?`;
 
-  // 4. Llamamos a tu modal pasando SOLO 2 parámetros (mensaje y callback)
   showConfirmModal(mensaje, async () => {
     
     try {
