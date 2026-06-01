@@ -1,153 +1,139 @@
 # SportLeague Manager
 
-Aplicación web para administrar una liga o torneo deportivo universitario. El sistema permite manejar equipos, jugadores, torneos, partidos y resultados usando JavaScript directo con Firebase.
+Aplicación web desarrollada con **HTML, CSS, JavaScript y Firebase** para la administración de ligas y torneos deportivos universitarios.
 
-## Tecnologías
+El sistema permite gestionar equipos, jugadores, torneos y partidos, además de controlar el acceso mediante autenticación de usuarios y roles administrativos.
 
-- HTML
-- CSS
-- JavaScript
-- Bootstrap
-- Firebase Authentication
-- Firestore Database
+## Requisitos previos
 
-## Estructura
+| Herramienta           | Versión mínima              |
+| --------------------- | --------------------------- |
+| Navegador web moderno | Chrome, Edge o Firefox      |
+| Firebase              | Plan Spark (gratuito)       |
+| Live Server           | Recomendado para desarrollo |
+
+---
+
+## Estructura del proyecto
 
 ```text
-public/
-├── index.html
-├── login.html
-├── register.html
-├── dashboard.html
-├── teams.html
-├── players.html
-├── tournaments.html
-├── matches.html
-└── assets/
-    ├── css/
-    │   └── styles.css
-    └── js/
-        ├── firebase.js
-        ├── auth.js
-        ├── firestore.js
-        ├── validators.js
-        ├── ui.js
-        ├── teams.js
-        ├── players.js
-        ├── tournaments.js
-        └── matches.js
+SportLeague-Manager/
+├── public/
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard.html
+│   ├── teams.html
+│   ├── players.html
+│   ├── tournaments.html
+│   ├── matches.html
+│   └── assets/
+│       ├── css/
+│       │   └── styles.css
+│       └── js/
+│           ├── firebase.js
+│           ├── auth.js
+│           ├── firestore.js
+│           ├── validators.js
+│           ├── ui.js
+│           ├── teams.js
+│           ├── players.js
+│           ├── tournaments.js
+│           └── matches.js
+├── firestore.rules
+└── README.md
 ```
 
-## Módulos
+---
+
+## Ejecución local
+
+Al ser una aplicación desarrollada con HTML, CSS y JavaScript puro, no requiere proceso de compilación.
+
+Abrir el proyecto utilizando Live Server en Visual Studio Code.
+---
+
+## Módulos principales
 
 ### Autenticación
 
-- Registro de usuarios.
-- Inicio de sesión.
-- Cierre de sesión.
-- Protección de páginas privadas.
-- Rol de usuario administrador.
-
-### Dashboard
-
-- Total de equipos.
-- Total de jugadores.
-- Total de torneos.
-- Partidos programados.
-- Partidos jugados.
-- Accesos rápidos a módulos principales.
+* Registro de usuarios.
+* Inicio y cierre de sesión.
+* Protección de páginas privadas.
+* Control de acceso mediante roles.
 
 ### Equipos
 
-- Registrar equipos.
-- Listar equipos.
-- Ver detalle.
-- Editar información.
-- Activar o desactivar.
-- Eliminar.
-- Buscar y filtrar.
-- Ver jugadores y partidos recientes del equipo.
+* Registro de equipos.
+* Edición de información.
+* Consulta detallada.
+* Activación y desactivación.
+* Eliminación de registros.
+* Filtros por nombre, deporte, categoría y estado.
 
 ### Jugadores
 
-- Registrar jugadores.
-- Listar jugadores.
-- Ver ficha completa.
-- Editar información.
-- Activar o desactivar.
-- Eliminar.
-- Buscar por nombre.
-- Filtrar por equipo.
+* Registro y edición de jugadores.
+* Consulta detallada mediante modal.
+* Activación y desactivación.
+* Eliminación de registros.
+* Filtro por equipo.
+* Posiciones dinámicas según el deporte.
+* Soporte para estudiantes y participantes externos.
 
 ### Torneos
 
-- Crear torneos.
-- Listar torneos.
-- Ver detalle.
-- Editar información.
-- Cambiar estado.
-- Eliminar.
-- Ver partidos asociados.
+* Registro de torneos.
+* Administración de información.
+* Consulta detallada.
+* Cambio de estado.
 
 ### Partidos
 
-- Programar partidos.
-- Listar partidos.
-- Filtrar por torneo y estado.
-- Registrar marcador final.
-- Cambiar estado a jugado al capturar resultado.
+* Programación de encuentros.
+* Registro de resultados.
+* Consulta y filtrado.
+* Actualización automática de estado.
 
-## Validaciones
+### Dashboard
 
-El proyecto usa funciones reutilizables para validar:
+* Estadísticas generales.
+* Equipos registrados.
+* Jugadores registrados.
+* Torneos activos.
+* Resumen de partidos.
 
-- campos obligatorios;
-- correo electrónico;
-- longitud mínima;
-- fechas;
-- números positivos;
-- números enteros mayores o iguales a cero;
-- número de camiseta;
-- duplicados cuando aplica.
+---
 
-## Firebase
+## Seguridad
 
-El proyecto usa Firebase Authentication para usuarios y Firestore como base de datos.
+El sistema utiliza:
 
-Colecciones principales:
+* Firebase Authentication para autenticación de usuarios.
+* Roles de administrador y usuario.
+* Reglas de Firestore para restringir operaciones sensibles.
+* Validaciones reutilizables para formularios.
 
-- `users`
-- `teams`
-- `players`
-- `tournaments`
-- `matches`
+---
 
-También se incluye `firestore.rules` para restringir operaciones de escritura a usuarios administradores.
+## Dependencias externas
 
-## Cómo correr el proyecto
+| Dependencia             | Uso                             |
+| ----------------------- | ------------------------------- |
+| Bootstrap 5             | Componentes visuales e interfaz |
+| Firebase Authentication | Gestión de usuarios             |
+| Cloud Firestore         | Base de datos NoSQL             |
+| Bootstrap Icons         | Iconografía                     |
 
-Desde la carpeta del proyecto se puede levantar un servidor local:
+---
 
-```bash
-python3 -m http.server 5173 -d public
+## Colecciones principales
+
+* `users`
+* `teams`
+* `players`
+* `tournaments`
+* `matches`
+
 ```
-
-Luego abrir:
-
-```text
-http://localhost:5173/
 ```
-
-## Documentación
-
-La carpeta `docs/` contiene:
-
-- historias de usuario del Sprint 1;
-- historias de usuario del Sprint 2;
-- pruebas manuales del Sprint 1.
-
-## Estado general
-
-El proyecto ya cuenta con autenticación, CRUDs principales, dashboard, validaciones, conexión con Firestore y reglas básicas de seguridad.
-
-Quedan pendientes algunas mejoras finales como tabla de posiciones, equipo líder en dashboard y edición/cancelación de partidos programados.
